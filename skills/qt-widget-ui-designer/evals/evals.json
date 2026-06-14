@@ -1,0 +1,40 @@
+{
+  "skill_name": "qt-widget-ui-designer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "dark-theme-dashboard",
+      "prompt": "我正在开发一个数据监控仪表盘应用，需要一个现代化的深色主题。要求：1) 使用 Material Design 风格 2) 主色调为蓝紫色 3) 包含按钮、输入框、表格、图表控件的样式 4) 支持平滑的主题切换动画。请提供完整的 QSS 样式表和主题管理器实现。",
+      "expected_output": "完整的深色主题 QSS 样式表、ThemeManager 类实现、主题切换代码",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "custom-button-styles",
+      "prompt": "我需要为工业控制软件设计一套专业的按钮样式。要求：1) 主操作按钮（绿色）2) 危险操作按钮（红色带警告图标）3) 禁用状态明显区分 4) 按下状态有视觉反馈 5) 支持键盘焦点指示器。请提供 QSS 代码和自定义按钮类实现。",
+      "expected_output": "专业按钮 QSS 样式、自定义按钮类、状态处理代码",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "card-component-design",
+      "prompt": "设计一个 Material Design 风格的卡片控件，要求：1) 支持阴影层级（elevation）2) 鼠标悬停时阴影加深 3) 圆角边框 4) 可包含标题、内容、操作区域 5) 支持点击涟漪效果。请提供完整的 CardWidget 实现。",
+      "expected_output": "CardWidget 类实现、阴影效果代码、动画处理",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "high-dpi-adaptation",
+      "prompt": "我的 Qt 应用在 4K 显示器上显示模糊，需要实现高 DPI 适配。要求：1) 支持 Windows 和 Linux 2) 自动检测 DPI 缩放 3) 图标和字体正确缩放 4) 布局自适应。请提供完整的 DPI 适配方案。",
+      "expected_output": "DPI 工具类、高 DPI 配置代码、自适应布局示例",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "loading-animation",
+      "prompt": "为我的文件上传功能设计加载动画，要求：1) 圆形进度指示器 2) 支持确定进度和不确定进度两种模式 3) 可自定义颜色和大小 4) 流畅的动画效果。请提供 LoadingSpinner 控件实现。",
+      "expected_output": "LoadingSpinner 类、动画实现、使用示例",
+      "files": []
+    }
+  ]
+}
