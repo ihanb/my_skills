@@ -2,10 +2,11 @@
  * 适用于 Qt 6.x / Qt 5.x
  * 深色主题，紫色主色调
  *
- * 注意：本文件中 rgba() 仅用于 hover/selection 等交互状态，
- * 静态背景色一律使用纯色 #hex，符合 QSS 纯色优先原则。
- * rgba() 在全局样式表中是可接受的（只加载一次，不频繁更新），
- * 但在运行时动态 setStyleSheet() 中应避免使用。
+ * 注意：
+ * 1. 本文件为 ThemeManager 的静态输出参考，实际项目应通过 ThemeManager::LoadTheme() 动态注入色值。
+ * 2. 本文件中 rgba() 仅用于 hover/selection 等交互状态，静态背景色一律使用纯色 #hex。
+ * 3. QCheckBox / QRadioButton 的 indicator 使用 data URI SVG 绘制勾选图标，这是全局样式表中唯一允许的 SVG 使用场景；
+ *    运行时动态 setStyleSheet() 中应避免使用 SVG data URI。
  */
 
 /* ==================== 全局样式 ==================== */
@@ -26,7 +27,7 @@ QPushButton {
     background-color: #BB86FC;
     color: #000000;
     border: none;
-    border-radius: 20px;
+    border-radius: 8px;
     padding: 10px 24px;
     min-width: 64px;
     font-weight: 500;
@@ -229,7 +230,7 @@ QSlider::handle:horizontal {
     margin: -8px 0;
     background: #BB86FC;
     border: 2px solid #121212;
-    border-radius: 10px;
+    border-radius: 6px;
 }
 
 QSlider::handle:horizontal:hover {
@@ -591,11 +592,6 @@ QToolTip {
     border: 1px solid #444444;
     border-radius: 4px;
     padding: 8px 12px;
-}
-
-/* ==================== 对话框按钮框 ==================== */
-QDialogButtonBox {
-    button-layout: 0; /* Mac 风格 */
 }
 
 /* ==================== 旋转框 ==================== */

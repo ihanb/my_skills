@@ -1,5 +1,7 @@
 # QSS (Qt StyleSheet) 完整参考
 
+> 本文档为 QSS 语法参考。实际项目中，为获得最佳性能，请优先使用 `#objectName` 选择器，在根容器集中设置样式表，避免类选择器和后代选择器。
+
 ## 选择器
 
 ### 类型选择器
@@ -648,7 +650,7 @@ QDockWidget::close-button:hover, QDockWidget::float-button:hover {
 
 | 状态 | 说明 |
 |------|------|
- `:disabled` | 禁用状态 |
+| `:disabled` | 禁用状态 |
 | `:enabled` | 启用状态 |
 | `:focus` | 获得焦点 |
 | `:hover` | 鼠标悬停 |

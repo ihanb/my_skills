@@ -23,8 +23,8 @@ signals:
     void ItemSelected(int id);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QSplitter* splitter_ = nullptr;
     QListWidget* listWidget_ = nullptr;
@@ -37,7 +37,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -90,8 +90,8 @@ public:
     explicit {ClassName}(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QToolBar* toolbar_ = nullptr;
     QStackedWidget* stackedWidget_ = nullptr;
@@ -101,7 +101,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
@@ -136,8 +136,8 @@ public:
     explicit {ClassName}(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
     QWidget* CreateGeneralTab();
     QWidget* CreateAdvancedTab();
 
@@ -148,7 +148,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -203,8 +203,8 @@ public:
     explicit {ClassName}(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
     QGroupBox* CreateStatusCard(const QString& title, const QString& value);
 };
 ```
@@ -212,7 +212,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(12);

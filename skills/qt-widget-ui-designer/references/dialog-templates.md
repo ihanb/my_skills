@@ -26,8 +26,8 @@ signals:
     void DataSubmitted(const QVariantMap& data);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QLineEdit* nameEdit_ = nullptr;
     QComboBox* typeCombo_ = nullptr;
@@ -47,11 +47,11 @@ private:
 {ClassName}::{ClassName}(QWidget* parent)
     : QDialog(parent)
 {
-    SetupUi();
-    ConnectSignals();
+    setupUi();
+    connectSignals();
 }
 
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     setWindowTitle(tr("{DialogTitle}"));
     setMinimumWidth(400);
 
@@ -81,7 +81,7 @@ void {ClassName}::SetupUi() {
     mainLayout->addWidget(buttonBox_);
 }
 
-void {ClassName}::ConnectSignals() {
+void {ClassName}::connectSignals() {
     connect(buttonBox_, &QDialogButtonBox::accepted, this, [this]() {
         QVariantMap data;
         data["name"] = nameEdit_->text();
@@ -109,7 +109,7 @@ void {ClassName}::SetType(int type) {
 ### .cpp 关键差异
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     setWindowTitle(tr("{DialogTitle}"));
     setMinimumSize(500, 400);
 
@@ -154,7 +154,7 @@ void {ClassName}::SetupUi() {
 ### .cpp 关键差异
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(16);
@@ -203,8 +203,8 @@ signals:
     void WizardCompleted(const QVariantMap& data);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
     void UpdateNavigation();
     QWidget* CreateStep1();
     QWidget* CreateStep2();
@@ -223,7 +223,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     setWindowTitle(tr("{DialogTitle}"));
     setMinimumSize(600, 400);
 
@@ -255,7 +255,7 @@ void {ClassName}::SetupUi() {
     UpdateNavigation();
 }
 
-void {ClassName}::ConnectSignals() {
+void {ClassName}::connectSignals() {
     connect(backButton_, &QPushButton::clicked, this, [this]() {
         if (currentStep_ > 0) {
             currentStep_--;

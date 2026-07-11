@@ -33,8 +33,8 @@ signals:
     void DataSubmitted(const QVariantMap& data);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QLineEdit* nameEdit_ = nullptr;
     QComboBox* typeCombo_ = nullptr;
@@ -45,7 +45,7 @@ private:
 ```
 
 ```cpp
-void XxxDialog::SetupUi() {
+void XxxDialog::setupUi() {
     setWindowTitle(tr("Xxx Dialog"));
     setMinimumWidth(400);
 
@@ -116,8 +116,8 @@ public:
     explicit XxxPanel(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QSplitter* splitter_ = nullptr;
     QListWidget* listWidget_ = nullptr;
@@ -126,7 +126,7 @@ private:
 ```
 
 ```cpp
-void XxxPanel::SetupUi() {
+void XxxPanel::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -182,8 +182,8 @@ public:
     explicit XxxView(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QToolBar* toolbar_ = nullptr;
     QStackedWidget* stackedWidget_ = nullptr;
@@ -191,7 +191,7 @@ private:
 ```
 
 ```cpp
-void XxxView::SetupUi() {
+void XxxView::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
@@ -231,7 +231,7 @@ void XxxView::SetupUi() {
 
 **代码骨架**：
 ```cpp
-void XxxPanel::SetupUi() {
+void XxxPanel::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -276,7 +276,7 @@ QWidget* XxxPanel::createGeneralTab() {
 
 **代码骨架**：
 ```cpp
-void XxxWindow::SetupUi() {
+void XxxWindow::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -333,8 +333,8 @@ signals:
     void WizardCompleted(const QVariantMap& data);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
     void UpdateNavigation();
     QWidget* createStep1();
     QWidget* createStep2();
@@ -351,7 +351,7 @@ private:
 ```
 
 ```cpp
-void XxxWizard::SetupUi() {
+void XxxWizard::setupUi() {
     setWindowTitle(tr("Xxx Wizard"));
     setMinimumSize(600, 400);
 
@@ -412,7 +412,7 @@ void XxxWizard::UpdateNavigation() {
 
 **代码骨架**：
 ```cpp
-void XxxDashboard::SetupUi() {
+void XxxDashboard::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(12, 12, 12, 12);
     mainLayout->setSpacing(12);
@@ -477,8 +477,8 @@ public:
     explicit XxxMainWindow(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QDockWidget* navDock_ = nullptr;
     QDockWidget* propDock_ = nullptr;
@@ -489,7 +489,7 @@ private:
 ```
 
 ```cpp
-void XxxMainWindow::SetupUi() {
+void XxxMainWindow::setupUi() {
     centralWidget_ = new QWidget();
     setCentralWidget(centralWidget_);
 

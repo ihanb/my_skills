@@ -194,8 +194,8 @@ HTML 原型中的 CSS 样式需要转换为 QSS，但必须注意两者差异和
 
 3. **避免频繁 setStyleSheet**：
    ```cpp
-   // ✅ 正确：只在 SetupUi() 中设置一次
-   void SetupUi() {
+   // ✅ 正确：只在 setupUi() 中设置一次
+   void setupUi() {
        setStyleSheet("...");
    }
 

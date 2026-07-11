@@ -21,8 +21,8 @@ public:
     explicit {ClassName}(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QToolBar* toolbar_ = nullptr;
     QSplitter* splitter_ = nullptr;
@@ -35,7 +35,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     setWindowTitle(tr("{WindowTitle}"));
     resize(1000, 700);
 
@@ -91,8 +91,8 @@ public:
     explicit {ClassName}(QWidget* parent = nullptr);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QToolBar* toolbar_ = nullptr;
     QDockWidget* navDock_ = nullptr;
@@ -107,7 +107,7 @@ private:
 ### .cpp 模板
 
 ```cpp
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     setWindowTitle(tr("{WindowTitle}"));
     resize(1200, 800);
 

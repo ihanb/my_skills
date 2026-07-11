@@ -37,7 +37,11 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     void enterEvent(QEnterEvent* event) override;
+#else
+    void enterEvent(QEvent* event) override;
+#endif
     void leaveEvent(QEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -177,7 +181,11 @@ void CardWidget::UpdateShadow() {
     shadow->setOffset(0, params.first / 2);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 void CardWidget::enterEvent(QEnterEvent* event) {
+#else
+void CardWidget::enterEvent(QEvent* event) {
+#endif
     hovered_ = true;
     if (elevation_ < 8) {
         AnimateElevation(elevation_ + 2);
@@ -226,7 +234,7 @@ void CardWidget::AnimateElevation(int target) {
 ```cpp
 auto* card = new CardWidget(this);
 card->SetElevation(2);
-card->SetRadius(12);
+card->SetRadius(8);
 
 auto* title = new QLabel("Card Title");
 title->setStyleSheet("font-size: 20px; font-weight: 500; color: #212121;");
@@ -273,7 +281,11 @@ public:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     void enterEvent(QEnterEvent* event) override;
+#else
+    void enterEvent(QEvent* event) override;
+#endif
     void leaveEvent(QEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
 
@@ -315,7 +327,11 @@ public:
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     void enterEvent(QEnterEvent* event) override;
+#else
+    void enterEvent(QEvent* event) override;
+#endif
     void leaveEvent(QEvent* event) override;
     
     int Offset() const { return offset_; }
@@ -375,12 +391,16 @@ void SwitchButton::mouseReleaseEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         setChecked(!isChecked());
         AnimateToggle();
-        emit toggled(isChecked());
+        // toggled(bool) 由 QAbstractButton::setChecked() 自动发射，无需手动 emit
     }
     QAbstractButton::mouseReleaseEvent(event);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 void SwitchButton::enterEvent(QEnterEvent* event) {
+#else
+void SwitchButton::enterEvent(QEvent* event) {
+#endif
     hovered_ = true;
     update();
     QAbstractButton::enterEvent(event);

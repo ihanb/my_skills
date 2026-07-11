@@ -21,8 +21,8 @@ signals:
     void ValueChanged(const QString& value);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     // 内部控件
     // ...
@@ -37,18 +37,18 @@ private:
 {ClassName}::{ClassName}(QWidget* parent)
     : QWidget(parent)
 {
-    SetupUi();
-    ConnectSignals();
+    setupUi();
+    connectSignals();
 }
 
-void {ClassName}::SetupUi() {
+void {ClassName}::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     // ... 添加内部控件
 }
 
-void {ClassName}::ConnectSignals() {
+void {ClassName}::connectSignals() {
     // ... 连接内部信号槽
 }
 
@@ -84,8 +84,8 @@ signals:
     void Toggled(bool expanded);
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QToolButton* toggleButton_ = nullptr;
     QFrame* contentFrame_ = nullptr;
@@ -102,12 +102,12 @@ private:
 CollapsiblePanel::CollapsiblePanel(const QString& title, QWidget* parent)
     : QWidget(parent)
 {
-    SetupUi();
+    setupUi();
     toggleButton_->setText(title);
-    ConnectSignals();
+    connectSignals();
 }
 
-void CollapsiblePanel::SetupUi() {
+void CollapsiblePanel::setupUi() {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
@@ -127,7 +127,7 @@ void CollapsiblePanel::SetupUi() {
     mainLayout->addWidget(contentFrame_);
 }
 
-void CollapsiblePanel::ConnectSignals() {
+void CollapsiblePanel::connectSignals() {
     connect(toggleButton_, &QToolButton::toggled, this, [this](bool checked) {
         toggleButton_->setArrowType(checked ? Qt::DownArrow : Qt::RightArrow);
         contentFrame_->setVisible(checked);
@@ -172,8 +172,8 @@ signals:
     void Cleared();
 
 private:
-    void SetupUi();
-    void ConnectSignals();
+    void setupUi();
+    void connectSignals();
 
     QLineEdit* lineEdit_ = nullptr;
     QToolButton* clearButton_ = nullptr;
@@ -188,11 +188,11 @@ private:
 SearchBox::SearchBox(QWidget* parent)
     : QWidget(parent)
 {
-    SetupUi();
-    ConnectSignals();
+    setupUi();
+    connectSignals();
 }
 
-void SearchBox::SetupUi() {
+void SearchBox::setupUi() {
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -203,16 +203,16 @@ void SearchBox::SetupUi() {
     layout->addWidget(lineEdit_);
 
     clearButton_ = new QToolButton();
-    clearButton_->setText("✕");
+    clearButton_->setText("×");  /* U+00D7 乘号，避免 emoji 跨系统渲染差异 */
     clearButton_->setVisible(false);
     layout->addWidget(clearButton_);
 
     searchButton_ = new QToolButton();
-    searchButton_->setText("🔍");
+    searchButton_->setText("⌕");  /* U+2315 电话记录机符号，作为搜索图标 */
     layout->addWidget(searchButton_);
 }
 
-void SearchBox::ConnectSignals() {
+void SearchBox::connectSignals() {
     connect(lineEdit_, &QLineEdit::textChanged, this, [this](const QString& text) {
         clearButton_->setVisible(!text.isEmpty());
         emit TextChanged(text);
@@ -266,7 +266,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void SetupUi();
+    void setupUi();
     QLabel* valueLabel_ = nullptr;
     QLabel* unitLabel_ = nullptr;
 };
@@ -274,16 +274,17 @@ private:
 
 ```cpp
 #include "StatusCard.h"
+#include "ui/style/ThemeManager.h"
 #include <QVBoxLayout>
 #include <QMouseEvent>
 
 StatusCard::StatusCard(const QString& title, QWidget* parent)
     : QGroupBox(title, parent)
 {
-    SetupUi();
+    setupUi();
 }
 
-void StatusCard::SetupUi() {
+void StatusCard::setupUi() {
     auto* layout = new QVBoxLayout(this);
     layout->setAlignment(Qt::AlignCenter);
 
@@ -294,7 +295,8 @@ void StatusCard::SetupUi() {
 
     unitLabel_ = new QLabel();
     unitLabel_->setAlignment(Qt::AlignCenter);
-    unitLabel_->setStyleSheet("font-size: 12px; color: #666;");
+    unitLabel_->setStyleSheet(QString("font-size: 12px; color: %1;")
+                              .arg(ThemeManager::Instance()->ThemeColor("on_surface_secondary").name()));
     layout->addWidget(unitLabel_);
 }
 
@@ -311,13 +313,13 @@ void StatusCard::SetUnit(const QString& unit) {
 }
 
 void StatusCard::SetStatus(Status status) {
-    QString color;
+    QColor color;
     switch (status) {
-    case Status::Normal:  color = "#4CAF50"; break;
-    case Status::Warning: color = "#FF9800"; break;
-    case Status::Critical: color = "#F44336"; break;
+    case Status::Normal:  color = ThemeManager::Instance()->ThemeColor("success"); break;
+    case Status::Warning: color = ThemeManager::Instance()->ThemeColor("warning"); break;
+    case Status::Critical: color = ThemeManager::Instance()->ThemeColor("error"); break;
     }
-    valueLabel_->setStyleSheet(QString("font-size: 28px; font-weight: bold; color: %1;").arg(color));
+    valueLabel_->setStyleSheet(QString("font-size: 28px; font-weight: bold; color: %1;").arg(color.name()));
 }
 
 void StatusCard::mousePressEvent(QMouseEvent* event) {

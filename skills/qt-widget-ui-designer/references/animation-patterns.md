@@ -1,5 +1,7 @@
 # Qt Widget 动画模式库
 
+> 本文档在 `qt-widget-ui-designer` 的 Step 7（样式优化）中使用，为 QPropertyAnimation 实现提供可复用模板。生成 UI 代码时如需动画效果，从这里选择合适模式。
+
 ## 1. 基础动画工具类
 
 ```cpp
@@ -158,15 +160,22 @@ QPropertyAnimation* AnimationUtils::SlideIn(QWidget* widget, Qt::Edge from, int 
 }
 
 QPropertyAnimation* AnimationUtils::PopIn(QWidget* widget, int duration) {
-    widget->setWindowOpacity(0);
+    // windowOpacity 仅对顶层窗口有效；使用 QGraphicsOpacityEffect 支持任意 QWidget
+    auto* effect = new QGraphicsOpacityEffect(widget);
+    widget->setGraphicsEffect(effect);
+    effect->setOpacity(0);
     widget->show();
-    
-    auto* animation = new QPropertyAnimation(widget, "windowOpacity");
+
+    auto* animation = new QPropertyAnimation(effect, "opacity");
     animation->setDuration(duration);
     animation->setStartValue(0.0);
     animation->setEndValue(1.0);
     animation->setEasingCurve(QEasingCurve::OutBack);
-    
+
+    QObject::connect(animation, &QPropertyAnimation::finished, widget, [effect]() {
+        effect->deleteLater();
+    });
+
     animation->start(QAbstractAnimation::DeleteWhenStopped);
     return animation;
 }
