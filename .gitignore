@@ -1,0 +1,12 @@
+# IDE / editor
+.idea/
+
+# WorkBuddy local session data (memory logs, workspace state)
+.workbuddy/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Runtime cross-agent bus directory when placed inside the repo
+.agent-bus/
