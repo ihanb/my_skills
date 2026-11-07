@@ -95,8 +95,12 @@ export AGENT_BUS_CLI="<repo>/skills/cross-agent-bus/scripts/agent_bus.py"
 | 7 | B `claim --id B` | 拿到完整 JSON，`trust: "untrusted"` |
 | 8 | B `ack --reply-json ...`，A `poll` | A 收到 `type: reply` |
 
-全部通过后再接真实任务。建议先用两个普通终端模拟两个 Agent 跑一遍，
-确认总线本身没问题，再排查 IDE 侧配置。
+**顺序不能反**：`send` 默认要求 `--from` 已注册且心跳有效，所以第 2 步必须在
+第 5 步之前。跳过注册会直接得到 `sender ... has no fresh registration` 错误。
+只有离线补发或自测才加 `--no-verify-sender`。
+
+全部通过后再接真实任务。建议先跑 `python scripts/selftest.py`（45 项自检，
+用临时目录，不碰真实总线），再排查 IDE 侧配置。
 
 ## 常见故障
 
@@ -104,7 +108,9 @@ export AGENT_BUS_CLI="<repo>/skills/cross-agent-bus/scripts/agent_bus.py"
 |------|------|
 | `discover` 恒为 0 | root 不一致；或对端心跳超过 TTL（默认 300s） |
 | 消息发出但对方收不到 | `to` 写错 ID；或 `--to '*'` 时对端已离线 |
-| `claim` 一直返回 null | 消息已被别的会话领走，看 `claimed/` 目录 |
+| `claim` 一直返回 null | 消息已被别的会话领走，看 `claimed/` 目录；也可能是 `not_before` 未到（看 `deferred` 计数）或 `deadline` 已过（看 `expired` 计数） |
+| `send` 报 no fresh registration | 发送方没 register 或心跳过期；先 register / heartbeat，离线补发才用 `--no-verify-sender` |
+| 消息刚发就不见了 | 触发了惰性过期/撤回：查 `--ttl`、`--deadline-sec`、`--supersedes`、`type: revoke`；`poll --no-sweep` 可只读确认 |
 | 消息反复出现 | 处理超时被 `purge` 重新投递，属预期行为，处理逻辑需幂等 |
 | 中文路径/内容乱码 | 统一 UTF-8，脚本已强制 stdout/stderr 使用 UTF-8 |
 | 权限报错 | root 落在只读或同步盘冲突目录，换到本地路径 |
