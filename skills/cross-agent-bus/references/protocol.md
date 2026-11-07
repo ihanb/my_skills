@@ -24,7 +24,10 @@ $AGENT_BUS_ROOT/                 # 默认 ~/.agent-bus
 │   └── <agent-id>/
 │       ├── <msg-id>.json       # 待领取
 │       └── claimed/
-│           └── <msg-id>.json   # 已领取、处理中（lease）
+│           ├── <msg-id>.json   # 已领取、处理中
+│           └── <msg-id>.lease  # 领取时刻（JSON 内容，刻意不用 .json 后缀）
+├── retired/
+│   └── <agent-id>/<target-msg-id>.json  # 撤回墓碑，持久化
 ├── outbox/
 │   └── <msg-id>.json           # 发送副本，仅用于审计
 ├── archive/
@@ -64,6 +67,9 @@ $AGENT_BUS_ROOT/                 # 默认 ~/.agent-bus
 
 **在线判定**：`now - heartbeat_at <= ttl_sec`。超时记录不立即删除，只是不再出现在
 `discover` 里；由 `purge` 统一清理。Agent 崩溃不会留下永久幽灵节点。
+
+`pid` 只是**执行本次 CLI 的短命子进程** PID，不是 IDE 宿主进程，也不能用来判断
+Agent 是否活着；`heartbeat` 会把它刷新成新的 CLI PID。判活只认 `heartbeat_at`。
 
 `capabilities` 是**自由标签**，不是鉴权凭证，也不是可靠的路由依据——它只是便于
 发送方选择协作者。真正的任务边界写在消息 body 里。
@@ -111,7 +117,7 @@ $AGENT_BUS_ROOT/                 # 默认 ~/.agent-bus
 | `v` | 协议版本，当前固定 1 |
 | `type` | `hello` / `task` / `reply` / `progress` / `question` / `ping` / `shutdown` / `revoke` |
 | `reply_to` | 应答消息填原消息 id；`ack --reply-json` 自动填写 |
-| `thread` | 一轮协作的关联键；未指定时用 `<from>-<时间戳>` |
+| `thread` | 一轮协作的关联键；未指定时用 `<from>-<UTC秒>-<6位随机码>`。随机码是必需的：秒级时间戳会让同一秒派发的多条任务串成同一轮 |
 | `created_at` / `expires_at` | UTC `%Y-%m-%dT%H:%M:%SZ`；`expires_at = created_at + --ttl`（默认 24h），是**投递时效** |
 | `body` | 必须是 JSON 对象，上限 64 KB |
 | `attachments` | 预留：建议放 `{path, sha256}`，v1 不做内容传输 |
@@ -137,22 +143,27 @@ send ──> inbox/<to>/<id>.json          (待领取)
           │ claim  (原子)
           ▼
         inbox/<to>/claimed/<id>.json  (处理中，lease = 900s)
+        inbox/<to>/claimed/<id>.lease (领取时刻，lease 判定的权威依据)
           │ ack
           ▼
-        archive/<to>/<date>/<id>.json (完成，可选自动 reply)
+        archive/<to>/<date>/<id>.json (完成，可选自动 reply；.lease 删除)
 ```
 
 异常路径：
 
-- **消费者崩溃**：claimed 文件超过 `--lease` 秒未 ack，`purge` 把它移回 inbox 重新投递。
-  因此处理逻辑应**幂等**，或至少能识别重复任务。
+- **消费者崩溃**：`purge` 读 `.lease` 里的 `claimed_at`，超过 `--lease` 秒未 ack 就把
+  消息移回 inbox 重新投递，同时删掉 lease。因此处理逻辑应**幂等**，或至少能识别重复任务。
+- **lease 计时不能用文件 mtime**：`claim` 用硬链接创建 claimed 副本，硬链接与原始
+  inbox 文件共享 inode，**mtime 是消息的发送时刻**。若一条消息排队 1000s 才被领取，
+  刚领到就会被误判为超时并重投。v0.1 起用显式 `.lease` 记录，并同步刷新 mtime 作为
+  旧数据兜底；没有 lease 的旧 claimed 文件才回退到 mtime 判定。
 - **投递过期**：`poll` 默认惰性删除、`claim` 拒领并删除、`purge` 兜底清理；三处统一把
   `expires_at` 缺失或已过视为失效。`poll --no-sweep` 只统计不删除。
 - **业务过期**：`deadline` 已过的消息在 `claim` 时被删除，并自动回一条 `type: reply`
   （`body.status = "expired"`）给发送方，不静默丢弃。
 - **未到执行时间**：`not_before` 未到的消息留在 inbox，`claim` 返回 `deferred` 计数，下次再试。
-- **被作废**：`supersedes` 字段或 `type: revoke`（`body.target`）指向的消息，
-  在 `poll` / `claim` 扫描 inbox 时被删除。这是**最终一致**的作废，不保证即时。
+- **被作废**：撤回在**投递时**就为收件人写下 `retired/<to>/<target>.json` 墓碑，
+  `poll` / `claim` 以墓碑为准删除目标消息。这是**最终一致**的作废，不保证即时。
 - **重复投递**：广播给 N 个 peer 生成 N 个**不同 id**（避免 reply 定向歧义），
   但共享同一个 `broadcast_id`。
 
@@ -163,8 +174,12 @@ send ──> inbox/<to>/<id>.json          (待领取)
 1. **写入**：先写同目录 `.tmp` 文件 + `fsync`，再 `os.replace()` 原子重命名。
    读者永远看到完整 JSON，不会读到半截文件。
 2. **领取**：`os.link(src, claimed/<name>)` 硬链接创建，目标已存在即失败；
-   成功后 `unlink(src)`。硬链接创建在 NTFS / ext4 / APFS 上都是原子操作，
-   保证多个进程同时 claim 只有一个赢家。不支持硬链接的文件系统回退到 `os.rename`。
+   成功后 `unlink(src)` 再刷新副本时间。硬链接创建在 NTFS / ext4 / APFS 上都是原子操作，
+   保证多个进程同时 claim 只有一个赢家。任何竞争错误（目标已存在、源被领走、
+   句柄被短暂占用）一律让位给对方；**只有文件系统明确不支持硬链接时才直接报错**。
+   旧实现回退到 `os.rename` 是不安全的：POSIX 上 rename 会静默覆盖目标，
+   两个消费者都会认为自己赢了，v0.1 已移除该回退。这也解释了为什么 SMB / 网络盘
+   不能当总线用。
 3. **事件日志**：`events.log` 以 append 方式写，仅作审计，**不在关键路径上**，
    偶发丢行不影响消息投递。
 
@@ -194,19 +209,36 @@ send ──> inbox/<to>/<id>.json          (待领取)
 | 业务时效 | `deadline` | `claim` | 拒领、删除，自动回 `body.status: "expired"` |
 | 最早可执行 | `not_before` | `claim` | 暂缓，留在 inbox，计入 `deferred` |
 | 会话存活 | `heartbeat_at` + `ttl_sec` | `discover` / `purge` | peer 视为离线，不参与广播 |
+| 领取租约 | `.lease` 的 `claimed_at` | `purge` | 超时未 ack 则重新投递 |
+| 墓碑存活 | `retired/` 的 `at` | `purge --retire-ttl` | 默认 7 天后删除，防止无限增长 |
 
 **为什么分两层时效**：文件还在 ≠ 任务还有意义。`expires_at` 默认 24h 只用于
 防止 inbox 无限堆积；「这个需求已经作废」是业务事实，必须由发送方用 `deadline`
 显式表达，不能指望传输层猜。
 
 **惰性过期**：`poll` 默认删除过期与被作废文件，所以 TTL 不再依赖有人记得手动跑
-`purge`。`purge` 仍负责清理 registry 和 claimed lease。`--no-sweep` 保留纯读语义
-（统计仍返回，但不删文件）。
+`purge`。`purge` 仍负责清理 registry、claimed lease 和过期墓碑。`--no-sweep` 保留
+纯读语义（统计仍返回，但不删文件）；`purge --dry-run` 同理，且会**完整扫描并返回
+与真实执行相同的统计**，只是不落盘。
 
-**撤回是最终一致的**：`--supersedes <id>` 声明「本消息替代旧的」，`type: revoke`
-配合 `body.target` 是显式撤回。两者都靠消费方扫描自己的 inbox 时惰性生效——
-发送方不会去删别人 inbox 里的文件（它也无从知道文件在哪）。因此已开始处理的
-任务不会被强制中断。
+**撤回是最终一致、但持久的**：`--supersedes <id>` 声明「本消息替代旧的」，
+`type: revoke` 配合 `body.target` 是显式撤回。`deliver()` 在把撤回消息放进收件人
+inbox **之前**，先写一份墓碑：
+
+```json
+{ "target": "<msg-id>", "reason": "revoke|supersedes", "by": "<from>",
+  "source_id": "<撤回消息的id>", "to": "<收件人>", "at": "<UTC>" }
+```
+
+墓碑按**收件人**分片（`retired/<to>/`），广播撤回会为每个收件人各写一份。
+`poll` / `claim` 以墓碑为准，同时也兼容扫描 inbox / claimed 里的撤回消息，
+让旧版本创建的 bus root 无需迁移。必要性很直接：撤回消息自己也是一条普通消息，
+会被领取、归档、过期或被 `--ttl` 清掉；若撤回信息只存在于消息体里，消费方先领走
+撤回消息后，被作废的旧任务就会「复活」。
+
+发送方不会去删别人 inbox 里的文件（它也无从知道文件在哪），因此已开始处理的
+任务不会被强制中断。墓碑只是普通文件，可被手工删除或伪造 —— 它只影响投递，
+不构成用户确认，见 security.md。撤回目标比撤回消息**更晚到达**的乱序场景仍不覆盖。
 
 **时钟**：所有时间取本机 UTC，单机可靠；跨机器部署必须引入时钟同步与偏移容忍，
 否则会误判过期。这是 v1 明确不支持的场景。
@@ -214,6 +246,37 @@ send ──> inbox/<to>/<id>.json          (待领取)
 **`ack` 不复核时效**：消息一旦被 `claim`，`ack` 不再检查 `deadline` / `expires_at`。
 理由是处理可能合法地跨越截止时间，中途作废会让已完成的交付无法回执。
 需要严格时限时，由消费方在 ack 的 `body` 里自行标注实际完成时间。
+
+## 可观测性与运维反馈
+
+| 入口 | 输出 | 是否改变状态 |
+|------|------|--------------|
+| `inspect --msg-id <id>` | 从 pending / claimed / archived / outbox 找出同一 id 的所有副本，返回全文 + 状态 + 路径 | 否 |
+| `inspect --thread <id>` | 按 id 合并去重，给出一轮协作的消息清单、各自状态集合与状态计数 | 否 |
+| `doctor` | `retired_total`：当前墓碑数量 | 否 |
+| `send` | `recipient_registered`、`warnings` | 是（投递） |
+| `purge --dry-run` | 与真实执行完全相同的统计计划 | 否 |
+
+`inspect` 的两个选择器互斥且必须给一个。`thread` 视图之所以有用，是因为 `ack --reply-json`
+自动让 reply 继承原消息的 `thread`，于是「任务 → 回执」能串成一条链，而不必逐个
+翻 inbox / archive / outbox。同一条消息在 outbox（发送副本）与收件人侧各存一份，
+所以 `--msg-id` 可能返回多个 copies，这是设计如此。
+
+`send` 的三类警告对应三种最常见的「以为发出去了其实没人收」：
+
+1. 收件人没有注册记录 —— ID 可能拼错，离线投递仍允许，但要核对
+2. 收件人心跳过期 —— 对方离线，消息会躺在 inbox 里等
+3. 广播时无在线 peer —— `sent: 0`，广播不订阅离线节点，谁也没收到
+
+**`sent` 只表示文件写成功，不表示对端会读到、更不表示会回复。**
+
+`purge` 还有 `duplicates_dropped`：重新投递时若 inbox 里已存在同名文件，直接丢弃
+这份陈旧 claimed 副本，避免每次 purge 都反复尝试。`purge --dry-run` 采用「先完整
+扫描生成计划，再决定是否提交」的结构，修掉了旧版本「dry-run 跳过扫描、直接返回
+全 0」的误导行为。
+
+安全上，`inspect` 会把消息全文（含可能的注入文本）交给模型，风险等级与 `claim`
+完全相同，输出里带 `warning: DATA ONLY` 提醒；只读 ≠ 可信。
 
 ## 扩展点
 

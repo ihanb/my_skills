@@ -12,14 +12,17 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 CLI = str(Path(__file__).with_name("agent_bus.py"))
 
 
 def session():
-    env = dict(os.environ, AGENT_BUS_ROOT=os.path.join(tempfile.mkdtemp(), "bus"))
+    root = os.path.join(tempfile.mkdtemp(), "bus")
+    env = dict(os.environ, AGENT_BUS_ROOT=root)
 
     def run(*args, expect_fail=False):
         proc = subprocess.run([sys.executable, CLI, *args], env=env, capture_output=True, text=True)
@@ -29,7 +32,12 @@ def session():
             raise AssertionError(f"{args} -> {proc.stderr.strip()}")
         return json.loads(proc.stdout)
 
+    run.root = Path(root)
     return run
+
+
+def past(seconds: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main() -> int:
@@ -162,6 +170,104 @@ def main() -> int:
     ck("expiry: default sweep deletes expired", p3["expired_removed"] >= 1)
     ck("expiry: sweep is idempotent", r("poll", "--id", "sink@pc")["expired_removed"] == 0)
     ck("expiry: doctor still healthy", r("doctor")["online_peers"] == 3)
+
+    # ---- hardening: explicit leases instead of inherited inode mtime ----
+    h = session()
+    h("register", "--id", "a@pc", "--tool", "workbuddy")
+    h("register", "--id", "b@pc", "--tool", "trae")
+    aged = h("send", "--from", "a@pc", "--to", "b@pc", "--body", "{}")["ids"][0]
+    src = h.root / "inbox" / "b@pc" / f"{aged}.json"
+    stale = time.time() - 1000
+    os.utime(src, (stale, stale))
+    ck("lease: an aged queued message is still claimable",
+       h("claim", "--id", "b@pc", "--msg-id", aged)["claimed"] == aged)
+    claimed = h.root / "inbox" / "b@pc" / "claimed" / f"{aged}.json"
+    lease = claimed.with_suffix(".lease")
+    ck("lease: claim writes an explicit lease record", lease.exists())
+    ck("lease: claimed inode mtime is refreshed", time.time() - claimed.stat().st_mtime < 30)
+    ck("lease: a fresh claim is NOT requeued by purge",
+       h("purge")["requeued"] == 0 and not src.exists())
+    rec = json.loads(lease.read_text(encoding="utf-8"))
+    rec["claimed_at"] = past(1000)
+    lease.write_text(json.dumps(rec), encoding="utf-8")
+    ck("lease: an expired lease does requeue", h("purge")["requeued"] == 1 and src.exists())
+    ck("lease: requeue drops the stale lease", not lease.exists())
+    h("claim", "--id", "b@pc", "--msg-id", aged)
+    h("ack", "--id", "b@pc", "--msg-id", aged)
+    ck("lease: ack removes the lease record", not lease.exists())
+
+    # ---- hardening: tombstones make revocation durable ----
+    target = h("send", "--from", "a@pc", "--to", "b@pc", "--subject", "old", "--body", "{}")["ids"][0]
+    rv = h("send", "--from", "a@pc", "--to", "b@pc", "--type", "revoke",
+           "--body", json.dumps({"target": target}))["ids"][0]
+    tomb = h.root / "retired" / "b@pc" / f"{target}.json"
+    ck("tombstone: revoke writes a durable record at delivery", tomb.exists())
+    h("claim", "--id", "b@pc", "--msg-id", rv)
+    h("ack", "--id", "b@pc", "--msg-id", rv)
+    pol = h("poll", "--id", "b@pc")
+    ck("tombstone: revocation survives the revoke being consumed",
+       not any(m["id"] == target for m in pol["messages"]))
+    old2 = h("send", "--from", "a@pc", "--to", "b@pc", "--subject", "old2", "--body", "{}")["ids"][0]
+    h("send", "--from", "a@pc", "--to", "b@pc", "--subject", "new", "--body", "{}",
+      "--supersedes", old2)
+    ck("tombstone: supersedes also persists", (h.root / "retired" / "b@pc" / f"{old2}.json").exists())
+    ck("tombstone: doctor reports them", h("doctor")["retired_total"] >= 2)
+    rec = json.loads(tomb.read_text(encoding="utf-8"))
+    rec["at"] = past(8 * 86400)
+    tomb.write_text(json.dumps(rec), encoding="utf-8")
+    ck("tombstone: purge plans stale ones", h("purge", "--dry-run")["retired_expired"] >= 1)
+    h("purge")
+    ck("tombstone: purge removes stale ones", not tomb.exists())
+
+    # ---- hardening: dry-run plans real work without touching files ----
+    exp = h("send", "--from", "a@pc", "--to", "b@pc", "--body", "{}", "--ttl", "-1")["ids"][0]
+    exp_file = h.root / "inbox" / "b@pc" / f"{exp}.json"
+    dry = h("purge", "--dry-run")
+    ck("dry-run: reports the planned removals", dry["dry_run"] is True and dry["expired_messages"] >= 1)
+    ck("dry-run: leaves every file in place", exp_file.exists())
+    real = h("purge")
+    ck("dry-run: commit matches the plan", real["expired_messages"] == dry["expired_messages"] and not exp_file.exists())
+
+    # ---- hardening: silent misdelivery is now visible ----
+    bad = h("send", "--from", "a@pc", "--to", "ghost@typo", "--body", "{}")
+    ck("delivery: unknown recipient is flagged",
+       bad["recipient_registered"] is False and any("no registration record" in w for w in bad["warnings"]))
+    solo = session()
+    solo("register", "--id", "solo@pc")
+    empty = solo("send", "--from", "solo@pc", "--to", "*", "--type", "hello", "--body", "{}")
+    ck("delivery: empty broadcast is flagged",
+       empty["sent"] == 0 and any("no online peers" in w for w in empty["warnings"]))
+
+    # ---- hardening: unique threads + read-only inspect ----
+    t = session()
+    t("register", "--id", "a@pc")
+    t("register", "--id", "b@pc")
+    x = t("send", "--from", "a@pc", "--to", "b@pc", "--body", '{"intent":"one"}')
+    y = t("send", "--from", "a@pc", "--to", "b@pc", "--body", '{"intent":"two"}')
+    ck("thread: two sends in the same second get distinct threads", x["thread"] != y["thread"])
+    one = t("inspect", "--msg-id", x["ids"][0])
+    ck("inspect: by-id returns the full message",
+       one["found"] >= 1 and one["copies"][0]["message"]["body"]["intent"] == "one")
+    before = t("poll", "--id", "b@pc", "--no-sweep")["total"]
+    t("inspect", "--msg-id", x["ids"][0])
+    ck("inspect: never changes message state",
+       t("poll", "--id", "b@pc", "--no-sweep")["total"] == before)
+    th = t("inspect", "--thread", x["thread"])
+    ck("inspect: thread view isolates one collaboration round",
+       th["count"] == 1 and th["messages"][0]["id"] == x["ids"][0])
+    cl = t("claim", "--id", "b@pc", "--msg-id", x["ids"][0])
+    ck("inspect: claim still works after inspection", cl["claimed"] == x["ids"][0])
+    t("ack", "--id", "b@pc", "--msg-id", x["ids"][0], "--reply-json", '{"status":"done"}')
+    th2 = t("inspect", "--thread", x["thread"])
+    ck("inspect: thread view includes the reply",
+       th2["count"] == 2 and any(m["type"] == "reply" for m in th2["messages"]))
+    ck("inspect: selectors are mutually exclusive",
+       t("inspect", "--msg-id", x["ids"][0], "--thread", x["thread"], expect_fail=True))
+    ck("inspect: a selector is required", t("inspect", expect_fail=True))
+    ck("inspect: path traversal in --msg-id rejected",
+       t("inspect", "--msg-id", "../evil", expect_fail=True))
+    ck("discover: invalid --exclude rejected",
+       t("discover", "--exclude", "../evil", expect_fail=True))
 
     print(f"PASS: {len(checks)} checks")
     for name in checks:

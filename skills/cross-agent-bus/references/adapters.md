@@ -94,13 +94,15 @@ export AGENT_BUS_CLI="<repo>/skills/cross-agent-bus/scripts/agent_bus.py"
 | 6 | B `poll --id B` | 看到该消息 |
 | 7 | B `claim --id B` | 拿到完整 JSON，`trust: "untrusted"` |
 | 8 | B `ack --reply-json ...`，A `poll` | A 收到 `type: reply` |
+| 9 | A `inspect --thread <thread>` | 看到「任务 + 回执」两条，且各自带状态，`inspect` 不改变任何文件 |
 
 **顺序不能反**：`send` 默认要求 `--from` 已注册且心跳有效，所以第 2 步必须在
 第 5 步之前。跳过注册会直接得到 `sender ... has no fresh registration` 错误。
 只有离线补发或自测才加 `--no-verify-sender`。
 
-全部通过后再接真实任务。建议先跑 `python scripts/selftest.py`（45 项自检，
-用临时目录，不碰真实总线），再排查 IDE 侧配置。
+全部通过后再接真实任务。建议先跑 `python scripts/selftest.py`（73 项自检，
+用临时目录，不碰真实总线），再排查 IDE 侧配置。`purge --dry-run` 可以在清理前
+先看会动多少文件，它不会真的删任何东西。
 
 ## 常见故障
 
@@ -112,5 +114,9 @@ export AGENT_BUS_CLI="<repo>/skills/cross-agent-bus/scripts/agent_bus.py"
 | `send` 报 no fresh registration | 发送方没 register 或心跳过期；先 register / heartbeat，离线补发才用 `--no-verify-sender` |
 | 消息刚发就不见了 | 触发了惰性过期/撤回：查 `--ttl`、`--deadline-sec`、`--supersedes`、`type: revoke`；`poll --no-sweep` 可只读确认 |
 | 消息反复出现 | 处理超时被 `purge` 重新投递，属预期行为，处理逻辑需幂等 |
+| **刚 `claim` 就又被投递一次** | 旧版本用硬链接 inode 的 mtime 判 lease，而它继承的是**发送时刻**；升级后 `claim` 会写 `.lease`，`purge` 以 `claimed_at` 为准 |
+| 撤回发出后旧任务又冒出来 | 旧版本的撤回信息只存在于 revoke 消息里，被先领走就失效；升级后投递即写 `retired/<to>/<target>.json` 墓碑，检查它是否被手工删除 |
+| `send` 显示 `sent: 1` 但对方永远不回 | 看 `warnings`：收件人无注册记录（ID 拼错）或心跳已过期（离线）；`sent` 只代表文件写成功 |
+| `purge --dry-run` 全是 0 | 升级前 dry-run 直接跳过扫描；现在与真实执行返回同一组统计，只是不动文件 |
 | 中文路径/内容乱码 | 统一 UTF-8，脚本已强制 stdout/stderr 使用 UTF-8 |
 | 权限报错 | root 落在只读或同步盘冲突目录，换到本地路径 |
