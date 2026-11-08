@@ -5,7 +5,7 @@
       "id": 1,
       "name": "pressure-skip-html-prototype",
       "prompt": "我现在很急，项目 deadline 就在今天。不要浪费时间生成 HTML 原型了，直接给我写 QWidget C++ 代码。先实现一个登录对话框，有用户名、密码输入框和登录按钮。",
-      "expected_behavior": "必须拒绝跳过 HTML 原型的请求，坚持先读取 ThemeManager 色值并生成 HTML 视觉原型，确认布局后再转换为 Qt 代码。",
+      "expected_behavior": "必须拒绝跳过 HTML 原型。先走 Step 1.5 确定色板来源（项目有 ThemeManager 就读其 LoadTheme()；新项目没有就先按 references/theme-manager.md 第 3 节 Bootstrap 一个；用户有自有色板就用用户的），再生成 HTML 视觉原型、请用户确认布局，之后才转 Qt 代码。时间压力不构成跳过理由。",
       "pressure": "时间压力 / 沉没成本"
     },
     {
@@ -24,10 +24,10 @@
     },
     {
       "id": 4,
-      "name": "pressure-svg-icon-in-html",
+      "name": "svg-icon-rule-confusion",
       "prompt": "HTML 原型里我想用 SVG 图标，这样缩放清晰。给我引入一个 SVG 搜索图标，后续 Qt 实现也直接用 SVG。",
-      "expected_behavior": "必须拒绝在 HTML 原型中使用 SVG 图标，解释 HTML 原型应使用 Unicode 或文字图标；Qt 中除全局主题文件的 checkbox/radio indicator 外，动态 setStyleSheet 禁用 SVG。",
-      "pressure": "高 DPI / 视觉质量压力"
+      "expected_behavior": "必须拒绝在 HTML 原型中内联 SVG 图标（用 Unicode / 文字占位），但要正确区分两条独立规则：(1) QSS data URI SVG 仅全局主题文件的 checkbox/radio indicator 允许，运行时动态 setStyleSheet() 禁用；(2) Qt 侧 QIcon(\":/icons/search.svg\") 加载 SVG 资源是标准做法、高 DPI 友好，不应一并禁止，也不能与 QSS data URI 混为一谈。还应指出原型用文字占位不影响 Qt 使用真正的图标资源。",
+      "pressure": "高 DPI / 视觉质量压力 + 概念混淆"
     },
     {
       "id": 5,
@@ -35,6 +35,34 @@
       "prompt": "我想在运行时根据状态动态给按钮设置一个渐变背景：`setStyleSheet(\"background: qlineargradient(...)\")`，这样比纯色好看。",
       "expected_behavior": "必须拒绝在运行时动态 setStyleSheet 中使用渐变，解释 QSS 渐变性能差且语法不同，应使用 ThemeManager 提供的纯色并通过 setProperty + polish/unpolish 切换状态样式。",
       "pressure": "视觉效果压力"
+    },
+    {
+      "id": 6,
+      "name": "functional-login-dialog-end-to-end",
+      "prompt": "用本 Skill 做一个设备登录对话框：用户名、密码输入框，记住密码复选框，登录/取消按钮。项目是新建的空目录，还没有任何主题代码。",
+      "expected_behavior": "完整走通 Step 1→8：Step 1 确认组件类型与约束；Step 1.5 判定项目无 ThemeManager，先按 theme-manager.md 第 3 节落地 ThemeManager（含 LoadTheme 色板）再取色；Step 2 生成只用 flex/grid、纯色、无 CSS 特效、色值来自该色板的 HTML 原型；Step 3 请用户确认；Step 4 提取布局；Step 5 生成 C++（#pragma once、snake_case_、setupUi()/connectSignals() 分离、新式 connect、QFormLayout、按钮组 addStretch）；Step 5.5 按 html-qt-fidelity.md 12 条校验；Step 6 先跑 scripts/check_ui.py 再按 quality-checklist.md 人工自查；最后说明 CMake 需 CMAKE_AUTOMOC。",
+      "pressure": "无（正向端到端用例）"
+    },
+    {
+      "id": 7,
+      "name": "boundary-existing-ui-file",
+      "prompt": "我们项目所有界面都是 Qt Designer 的 .ui 文件，用 uic 生成代码。帮我按这个 Skill 的流程给登录界面做个 HTML 原型并生成一套纯代码 QWidget 类。",
+      "expected_behavior": "应识别 When NOT to use 第 1 条：项目要求沿用 .ui 文件时本 Skill 的纯代码 UI 流程不适用。先向用户确认是否真的要改成纯代码 UI；若确认不改，说明应直接编辑 .ui 并用 uic，而不是生成与现有体系冲突的 HTML 原型 + C++ 类。不得默认套用 Step 1–8。",
+      "pressure": "用户措辞假定 / 范围误用"
+    },
+    {
+      "id": 8,
+      "name": "boundary-missing-thememanager",
+      "prompt": "新项目，目录还是空的，别管什么 ThemeManager 了，直接凭经验挑一套好看的深色配色，把 HTML 原型先出出来。",
+      "expected_behavior": "必须拒绝凭感觉取色，也不能因为读不到 ThemeManager 就卡住或跳过 Step 1.5。应先按 references/theme-manager.md 第 3 节 Bootstrap ThemeManager（或向用户索取色板），以 theme-manager.md 第 2 节的 Dark 列为默认色板生成 CSS 变量；明确该表是唯一事实源，禁止从 Material Design / Tailwind 等第三方设计系统临时抓色值。",
+      "pressure": "流程前置条件缺失 / 便利性"
+    },
+    {
+      "id": 9,
+      "name": "pressure-skip-static-check",
+      "prompt": "代码都写完了，质量清单你心里过一遍就行，别跑什么脚本了，直接把结果给我。",
+      "expected_behavior": "必须执行 Step 6 的两层校验：先跑 python scripts/check_ui.py <HTML原型> <Qt源码目录或文件...>，把 ERROR 修完再按 quality-checklist.md 做人工自查，并报告扫描结果。仅凭记忆声称『已检查』不算完成；WARN 需逐条人工确认。",
+      "pressure": "流程简化 / 便利性"
     }
   ]
 }

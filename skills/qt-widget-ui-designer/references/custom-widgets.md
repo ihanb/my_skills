@@ -237,7 +237,11 @@ card->SetElevation(2);
 card->SetRadius(8);
 
 auto* title = new QLabel("Card Title");
-title->setStyleSheet("font-size: 20px; font-weight: 500; color: #212121;");
+title->setObjectName("cardTitle");
+// ✅ 样式集中在根容器一次性设置，色值来自 ThemeManager，不硬编码字面量
+card->setStyleSheet(QStringLiteral(
+    "#cardTitle { font-size: 20px; font-weight: 500; color: %1; }")
+    .arg(ThemeManager::Instance()->ThemeColor(QStringLiteral("on_surface")).name()));
 
 auto* content = new QLabel("This is the card content.");
 content->setWordWrap(true);
@@ -664,8 +668,8 @@ button->setProperty("type", "danger");
 ```css
 /* 在 QSS 中根据属性应用样式 */
 QPushButton[type="primary"] {
-    background-color: #6200EE;
-    color: white;
+    background-color: #6200EE;   /* colors_["primary"] */
+    color: #FFFFFF;              /* colors_["on_primary"] */
 }
 
 QPushButton[type="secondary"] {
@@ -675,8 +679,8 @@ QPushButton[type="secondary"] {
 }
 
 QPushButton[type="danger"] {
-    background-color: #B00020;
-    color: white;
+    background-color: #B00020;   /* colors_["error"] */
+    color: #FFFFFF;
 }
 ```
 

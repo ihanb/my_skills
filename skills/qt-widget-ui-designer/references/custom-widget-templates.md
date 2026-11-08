@@ -113,7 +113,7 @@ void CollapsiblePanel::setupUi() {
     mainLayout->setSpacing(0);
 
     toggleButton_ = new QToolButton();
-    toggleButton_->setStyleSheet("QToolButton { border: none; font-weight: bold; }");
+    toggleButton_->setObjectName("panelToggleButton");  // 样式由根容器集中设置
     toggleButton_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     toggleButton_->setArrowType(Qt::DownArrow);
     toggleButton_->setCheckable(true);
@@ -125,6 +125,12 @@ void CollapsiblePanel::setupUi() {
     frameLayout->setContentsMargins(8, 8, 8, 8);
     frameLayout->setSpacing(8);
     mainLayout->addWidget(contentFrame_);
+
+    // ✅ 根容器一次性设置，#objectName 选择器，不在子控件上单独 setStyleSheet()
+    setObjectName("collapsiblePanel");
+    setStyleSheet(QStringLiteral(
+        "#panelToggleButton { border: none; font-weight: bold; }"
+    ));
 }
 
 void CollapsiblePanel::connectSignals() {
@@ -250,14 +256,14 @@ void SearchBox::SetPlaceholderText(const QString& text) {
 class StatusCard : public QGroupBox {
     Q_OBJECT
 public:
+    enum class Status { Normal, Warning, Critical };  // 必须先于 SetStatus 声明，否则参数类型不可见
+
     explicit StatusCard(const QString& title, QWidget* parent = nullptr);
 
     void SetValue(const QString& value);
     void SetValue(int value);
     void SetUnit(const QString& unit);
-    void SetStatus(StatusCard::Status status);
-
-    enum class Status { Normal, Warning, Critical };
+    void SetStatus(Status status);
 
 signals:
     void Clicked();
@@ -273,8 +279,8 @@ private:
 ```
 
 ```cpp
-#include "StatusCard.h"
-#include "ui/style/ThemeManager.h"
+#include "status_card.h"
+#include "ui/style/theme_manager.h"
 #include <QVBoxLayout>
 #include <QMouseEvent>
 
@@ -289,15 +295,28 @@ void StatusCard::setupUi() {
     layout->setAlignment(Qt::AlignCenter);
 
     valueLabel_ = new QLabel("--");
+    valueLabel_->setObjectName("statusCardValue");
     valueLabel_->setAlignment(Qt::AlignCenter);
-    valueLabel_->setStyleSheet("font-size: 28px; font-weight: bold;");
     layout->addWidget(valueLabel_);
 
     unitLabel_ = new QLabel();
+    unitLabel_->setObjectName("statusCardUnit");
     unitLabel_->setAlignment(Qt::AlignCenter);
-    unitLabel_->setStyleSheet(QString("font-size: 12px; color: %1;")
-                              .arg(ThemeManager::Instance()->ThemeColor("on_surface_secondary").name()));
     layout->addWidget(unitLabel_);
+
+    // ✅ 样式集中在根容器一次性设置：#objectName 选择器 + ThemeManager 色值
+    auto* tm = ThemeManager::Instance();
+    static const QString kStyle = QStringLiteral(R"(
+        #statusCardValue { font-size: 28px; font-weight: bold; color: %1; }
+        #statusCardUnit  { font-size: 12px; color: %2; }
+        #statusCardValue[status="warning"]  { color: %3; }
+        #statusCardValue[status="critical"] { color: %4; }
+    )");
+    setStyleSheet(kStyle.arg(tm->ThemeColor(QStringLiteral("on_background")).name(),
+                             tm->ThemeColor(QStringLiteral("on_surface_secondary")).name(),
+                             tm->ThemeColor(QStringLiteral("warning")).name(),
+                             tm->ThemeColor(QStringLiteral("error")).name()));
+    valueLabel_->setProperty("status", "normal");
 }
 
 void StatusCard::SetValue(const QString& value) {
@@ -313,13 +332,16 @@ void StatusCard::SetUnit(const QString& unit) {
 }
 
 void StatusCard::SetStatus(Status status) {
-    QColor color;
+    // ✅ 运行时只切动态属性，不重建样式表；颜色由 setupUi() 里的 QSS 规则决定
+    const char* state = "normal";
     switch (status) {
-    case Status::Normal:  color = ThemeManager::Instance()->ThemeColor("success"); break;
-    case Status::Warning: color = ThemeManager::Instance()->ThemeColor("warning"); break;
-    case Status::Critical: color = ThemeManager::Instance()->ThemeColor("error"); break;
+    case Status::Normal:   state = "normal";   break;
+    case Status::Warning:  state = "warning";  break;
+    case Status::Critical: state = "critical"; break;
     }
-    valueLabel_->setStyleSheet(QString("font-size: 28px; font-weight: bold; color: %1;").arg(color.name()));
+    valueLabel_->setProperty("status", state);
+    valueLabel_->style()->unpolish(valueLabel_);
+    valueLabel_->style()->polish(valueLabel_);
 }
 
 void StatusCard::mousePressEvent(QMouseEvent* event) {

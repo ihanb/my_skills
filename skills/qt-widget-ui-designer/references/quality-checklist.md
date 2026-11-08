@@ -2,12 +2,18 @@
 
 AI 生成 QWidget UI 代码后，按此清单逐项自查。定点微调后只校验受影响的项。
 
+> **两层校验**：先跑自动扫描
+> `python scripts/check_ui.py <HTML原型> <Qt源码目录或文件...>`，
+> 把可机械判定的违例（禁用 CSS 特效、硬编码色值、`setFixedWidth`、运行时
+> `setStyleSheet()`、旧式 connect 宏）修完，再按本清单做人工判断项。
+> 脚本的 `WARN` 需人工确认，`ERROR` 必须清零。
+
 ## 1. 布局合理性
 
 - [ ] **嵌套深度**：布局嵌套不超过 3 层，超过则拆分为自定义 Widget
 - [ ] **stretch 分配**：弹性区域设置了 stretch factor，没有无 stretch 的嵌套布局
 - [ ] **间距标准**：控件间 8px，分组间 16px，窗口边距 12px
-- [ ] **无固定尺寸**：没有使用 setFixedWidth/setFixedHeight（用 minimumSize + stretch 代替）
+- [ ] **无固定尺寸**：容器与内容区没有用 `setFixedWidth()` / `setFixedHeight()`（用 `minimumSize` + `stretch` 代替）。**例外**：卡片 / 列表项按保真度规则用 `setFixedHeight()`，状态点 / 徽章等小 QLabel 用 `setFixedSize()`——见第 9 节「高度策略正确」，两条规则适用范围不同，不冲突
 - [ ] **ScrollArea**：可能超长的内容用 QScrollArea 包裹，且 setWidgetResizable(true)
 - [ ] **布局选择**：表单用 QFormLayout，侧边栏+内容用 QSplitter，没有"万能布局"
 
@@ -26,6 +32,7 @@ AI 生成 QWidget UI 代码后，按此清单逐项自查。定点微调后只�
 - [ ] **新式 connect**：使用新式 connect 语法，不用 SLOT/SIGNAL 宏
 - [ ] **对话框数据返回**：对话框通过信号返回数据，不直接操作外部对象
 - [ ] **#pragma once**：头文件使用 #pragma once 守卫
+- [ ] **Q_OBJECT 与构建**：含 `Q_OBJECT` 的自定义控件已在 CMake 中启用 `CMAKE_AUTOMOC`（见 qt-widget-architecture/references/cmake-patterns.md）
 
 ## 4. 可维护性
 
@@ -44,6 +51,10 @@ AI 生成 QWidget UI 代码后，按此清单逐项自查。定点微调后只�
 - [ ] **圆角合理**：推荐 border-radius ≤6px；主操作按钮、卡片容器可放宽至 8px；避免 >12px 大圆角
 - [ ] **动态样式切换**：运行时样式变化使用 setProperty() + polish/unpolish，而非重新 setStyleSheet()
 - [ ] **样式字符串管理**：长样式表字符串提取为 static const 变量，不内联在代码中
+- [ ] **作用域区分**：全局主题 qss 用类型选择器、组件局部 qss 用 `#objectName`，两条规则没有混用
+- [ ] **SVG 规则**：运行时动态 `setStyleSheet()` 中没有 SVG data URI；`QIcon` 加载 `.svg` 资源不算违规
+- [ ] **outline 用法**：只用 `outline: none` 清除焦点矩形，没有用 CSS outline 画装饰线（QSS 不支持）
+- [ ] **色值来源**：所有色值来自 `ThemeManager::ThemeColor(key).name()`，没有硬编码字面量
 
 ## 6. 控件选择校验
 
@@ -75,7 +86,7 @@ AI 生成 QWidget UI 代码后，按此清单逐项自查。定点微调后只�
 - [ ] **小 QLabel 精确尺寸**：状态点、徽章等小尺寸 QLabel 已设置 `setFixedSize()`
 - [ ] **分隔线用 QFrame**：水平分隔线使用独立 `QFrame(HLine)`，不用 QSS `border-bottom`
 - [ ] **背景色全覆盖**：每个可见 QWidget 都显式设置了背景色，没有依赖透明继承
-- [ ] **颜色来自 ThemeManager**：所有颜色值来自 ThemeManager，没有硬编码色值
+- [ ] **颜色来自 ThemeManager**：所有颜色值来自 ThemeManager，与 `references/theme-manager.md` 第 2 节（或项目自有色板）逐 key 一致，HTML / QSS / C++ 三处无分歧
 - [ ] **高度策略正确**：卡片/列表项用 `setFixedHeight()`，内容区域用 `setMinimumHeight()`
 - [ ] **字号一致性**：Qt 中 ≤11px 字号已检查是否偏小，必要时增大 1px
 - [ ] **样式继承完整**：子控件单独 `setStyleSheet()` 时，继承属性（font-size 等）没有丢失

@@ -1,8 +1,14 @@
 # HTML → Qt 视觉保真度规则
 
-> 本文档在 `qt-widget-ui-designer` 的 Step 5.5（保真度校验）中使用。代码生成后，对照 HTML 原型逐项检查以下规则，确保 QWidget 实现与原型 1:1 视觉还原。
+> 本文档在 `qt-widget-ui-designer` 的 Step 5.5（保真度校验）中使用，是**保真度规则的唯一事实源**
+> （共 12 条）。`html-qt-mapping.md` 第 11 章是它的索引，`quality-checklist.md` 第 9 节是勾选项视图。
+> 代码生成后，对照 HTML 原型逐项检查，确保 QWidget 实现与原型 1:1 视觉还原。
 
 确保 HTML 原型与 QWidget 实现之间 1:1 视觉还原的关键规则。这些规则基于 CSS 和 QSS 的系统性渲染差异，每条规则都来自实际踩坑经验。
+
+> **色值约定**：本文所有示例色值均取自 `references/theme-manager.md` 第 2 节的 **Dark 列**，
+> 该表是全 Skill 色板的唯一事实源。示例中的字面量只是"当前主题的实际输出"，
+> 真实项目必须换成 `ThemeManager::ThemeColor(key).name()` 的结果。
 
 ---
 
@@ -76,25 +82,29 @@ QWidget 默认不追踪鼠标进入/离开事件（出于性能考虑），QSS `
 // ✅ 正确
 SimDeviceCard::SimDeviceCard(...) : QFrame(parent) {
     setObjectName("SimDeviceCard");
-    setStyleSheet("#SimDeviceCard:hover { border-color: #3b82f6; }");
+    setStyleSheet("#SimDeviceCard:hover { border-color: #6200EE; }");
     setAttribute(Qt::WA_Hover);  // 必须！否则 :hover 不生效
 }
 
 // ❌ 错误：缺少 WA_Hover
 SimDeviceCard::SimDeviceCard(...) : QFrame(parent) {
     setObjectName("SimDeviceCard");
-    setStyleSheet("#SimDeviceCard:hover { border-color: #3b82f6; }");
+    setStyleSheet("#SimDeviceCard:hover { border-color: #6200EE; }");
     // :hover 永远不会触发
 }
 ```
 
 ### HTML 原型对应写法
 
+HTML 原型**允许**用 `:hover` 表达静态交互态预览（`html-prototype-guide.md` 第 7 条），
+但每处必须加 `<!-- hover-state -->` 标注，且禁止搭配 `transition` / 缩放 / 阴影做动画：
+
 ```css
-/* HTML 中正常写 :hover，转换时记得加 WA_Hover */
-.card:hover { border-color: #3b82f6; }
-/* → setAttribute(Qt::WA_Hover) + QSS :hover */
+.card:hover { border-color: #6200EE; }   /* 静态变色，无 transition */
 ```
+
+→ Qt 侧对应 `setAttribute(Qt::WA_Hover)` + QSS `:hover`；主题 qss 里的 `:hover` 就是
+Qt 侧实现，与"原型禁用 CSS 过渡动画"并不冲突。属性选择器 `[prop=value]` 同理，见第 3 章。
 
 ---
 
@@ -131,7 +141,7 @@ private:
 };
 
 // QSS 可以稳定匹配
-// #SimDeviceCard[selected=true] { border-color: #3b82f6; }
+// #SimDeviceCard[selected=true] { border-color: #6200EE; }
 ```
 
 ```cpp
@@ -160,17 +170,17 @@ HTML 中小元素（状态点、标签、徽章）用 `border-radius` + `backgro
 // ✅ 正确：状态圆点
 status_dot_ = new QLabel;
 status_dot_->setFixedSize(6, 6);  // 精确尺寸
-status_dot_->setStyleSheet("background-color: #ef4444; border-radius: 3px;");
+status_dot_->setStyleSheet("background-color: #CF6679; border-radius: 3px;");
 
 // ✅ 正确：计数徽章
 count_label_ = new QLabel("3");
 count_label_->setStyleSheet(
-    "background-color: #3b82f6; color: white; border-radius: 10px;"
+    "background-color: #6200EE; color: white; border-radius: 10px;"
     "padding: 1px 8px; font-size: 10px; font-weight: bold;");
 
 // ❌ 错误：缺少 setFixedSize，QLabel 可能被布局拉伸
 status_dot_ = new QLabel;
-status_dot_->setStyleSheet("background-color: #ef4444; border-radius: 3px;");
+status_dot_->setStyleSheet("background-color: #CF6679; border-radius: 3px;");
 // 布局可能给 6x6 的 QLabel 分配更大空间，背景不裁剪
 ```
 
@@ -178,7 +188,7 @@ status_dot_->setStyleSheet("background-color: #ef4444; border-radius: 3px;");
 
 ```css
 /* HTML 中小元素用固定尺寸 */
-.status-dot { width: 6px; height: 6px; border-radius: 3px; background-color: #ef4444; }
+.status-dot { width: 6px; height: 6px; border-radius: 3px; background-color: #CF6679; }
 /* → QLabel + setFixedSize(6,6) + QSS border-radius:3px */
 ```
 
@@ -196,10 +206,10 @@ status_dot_->setStyleSheet("background-color: #ef4444; border-radius: 3px;");
 
 ```cpp
 // 父控件设置了 color
-main_widget->setStyleSheet("#main { color: #e0e4ec; }");
+main_widget->setStyleSheet("#main { color: #FFFFFF; }");
 
 // 子控件单独设置 color 会覆盖，但其他继承属性（如 font-size）丢失
-name_label_->setStyleSheet("color: #e0e4ec; font-weight: bold;");
+name_label_->setStyleSheet("color: #FFFFFF; font-weight: bold;");
 // font-size 不再继承自父控件！需要显式设置
 ```
 
@@ -208,15 +218,15 @@ name_label_->setStyleSheet("color: #e0e4ec; font-weight: bold;");
 ```cpp
 // ✅ 正确：根容器集中管理
 main_widget->setStyleSheet(R"(
-    #main { background-color: #22262e; }
-    #nameLabel { font-size: 13px; font-weight: bold; color: #e0e4ec; }
-    #metaLabel { font-size: 11px; color: #6b7280; }
-    #statusDot { background-color: #ef4444; border-radius: 3px; }
+    #main { background-color: #1E1E1E; }
+    #nameLabel { font-size: 13px; font-weight: bold; color: #FFFFFF; }
+    #metaLabel { font-size: 11px; color: #666666; }
+    #statusDot { background-color: #CF6679; border-radius: 3px; }
 )");
 
 // ❌ 错误：每个子控件单独设置，样式继承断裂
-name_label_->setStyleSheet("font-size: 13px; font-weight: bold; color: #e0e4ec;");
-meta_label_->setStyleSheet("font-size: 11px; color: #6b7280;");
+name_label_->setStyleSheet("font-size: 13px; font-weight: bold; color: #FFFFFF;");
+meta_label_->setStyleSheet("font-size: 11px; color: #666666;");
 ```
 
 **5.3 但对于卡片等独立组件，可以在组件自身设置样式表**
@@ -274,21 +284,21 @@ HTML 中用 `border-bottom: 1px solid #color` 或 `<hr>` 做分隔线很自然�
 auto* separator = new QFrame;
 separator->setFrameShape(QFrame::HLine);
 separator->setFixedHeight(1);
-separator->setStyleSheet("background-color: #3a3f4b; border: none;");
+separator->setStyleSheet("background-color: #333333; border: none;");
 ```
 
 **7.2 不要用 QSS `border-bottom` 做分隔线**
 
 ```cpp
 // ❌ 错误：QSS border-bottom 在 QWidget 上不可靠
-header_widget->setStyleSheet("#header { border-bottom: 1px solid #3a3f4b; }");
+header_widget->setStyleSheet("#header { border-bottom: 1px solid #333333; }");
 // QWidget 的 border-bottom 可能被布局覆盖或渲染不正确
 
 // ✅ 正确：用独立的 QFrame 分隔线
 auto* separator = new QFrame;
 separator->setFrameShape(QFrame::HLine);
 separator->setFixedHeight(1);
-separator->setStyleSheet("background-color: #3a3f4b; border: none;");
+separator->setStyleSheet("background-color: #333333; border: none;");
 main_layout->addWidget(separator);
 ```
 
@@ -309,31 +319,35 @@ HTML 原型使用了一套颜色，Qt 代码使用 ThemeManager 的另一套颜�
 ```css
 /* ✅ 正确：使用项目 ThemeManager 的深色主题色值 */
 :root {
-  --primary: #3b82f6;
-  --background: #1a1d23;
-  --surface: #22262e;
-  --surface_variant: #2d323c;
-  --on_background: #e0e4ec;
-  --on_surface_secondary: #9ca3b0;
-  --on_surface_muted: #6b7280;
-  --error: #ef4444;
-  --success: #22c55e;
-  --warning: #eab308;
-  --border: #3a3f4b;
-  --divider: #2d323c;
-  --hover_overlay: #363c48;
-  --selected_bg: #2a3040;
+  --primary: #6200EE;
+  --background: #121212;
+  --surface: #1E1E1E;
+  --surface_variant: #2C2C2C;
+  --on_background: #FFFFFF;
+  --on_surface_secondary: #AAAAAA;
+  --on_surface_muted: #666666;
+  --error: #CF6679;
+  --success: #66BB6A;
+  --warning: #FFA726;
+  --border: #333333;
+  --divider: #2C2C2C;
+  --hover_overlay: #2C2C2C;
+  --selected_bg: #3A2F4A;
 }
 
-/* ❌ 错误：使用通用色值，与 ThemeManager 不一致 */
+/* ❌ 错误：变量名自造、色值凭手填，与 ThemeManager 的 key / 值都对不上 */
 :root {
-  --bg: #1e1e1e;      /* ThemeManager 是 #1a1d23 */
-  --surface: #2d2d2d;  /* ThemeManager 是 #22262e */
-  --text: #ffffff;      /* ThemeManager 是 #e0e4ec */
+  --bg: #1E1E1E;      /* 实际 colors_["background"]    = #121212 */
+  --card: #2C2C2C;     /* 实际 colors_["surface"]       = #1E1E1E */
+  --text: #AAAAAA;     /* 实际 colors_["on_background"] = #FFFFFF */
 }
 ```
 
-**8.2 生成 HTML 原型前，必须先读取 ThemeManager::LoadTheme() 中的色值定义**
+**8.2 生成 HTML 原型前，必须按 Step 1.5 确定色板来源**
+
+三分支见 `references/theme-manager.md` 第 1 节：项目已有 ThemeManager → 读取其 `LoadTheme()`；
+新项目没有 → 先用该文件第 3 节 Bootstrap 一个再读取；用户自带色板 → 覆盖同名 key 后读取。
+**不允许因为"读不到文件"就跳过，也不允许从第三方设计系统临时抓一组色值。**
 
 ---
 
@@ -350,23 +364,23 @@ HTML 中子元素默认透明，父元素的 `background-color` 自然显示。Q
 ```cpp
 // ✅ 正确：每个容器都设置背景色
 auto* main_widget = new QWidget(this);
-main_widget->setStyleSheet("background-color: #22262e;");
+main_widget->setStyleSheet("background-color: #1E1E1E;");
 
 auto* scroll_content = new QWidget;
-scroll_content->setStyleSheet("background-color: #22262e;");
+scroll_content->setStyleSheet("background-color: #1E1E1E;");
 
 // ❌ 错误：只设父控件，子控件可能显示默认色
 auto* main_widget = new QWidget(this);
-main_widget->setStyleSheet("background-color: #22262e;");
+main_widget->setStyleSheet("background-color: #1E1E1E;");
 auto* scroll_content = new QWidget;  // 可能显示为白色！
 ```
 
 **9.2 QScrollArea 的 viewport 也需要设置背景色**
 
 ```cpp
-scroll_->setStyleSheet("QScrollArea { background-color: #1a1d23; border: none; }");
+scroll_->setStyleSheet("QScrollArea { background-color: #121212; border: none; }");
 // scroll content widget 也要设置
-scroll_content->setStyleSheet("background-color: #22262e;");
+scroll_content->setStyleSheet("background-color: #1E1E1E;");
 ```
 
 ---
@@ -409,22 +423,22 @@ HTML 原型中复合控件（筛选栏、消息气泡、卡片等）的子元素
 // ❌ 错误：只映射了外层，子组件无样式
 filter_bar_ = new QWidget;
 filter_bar_->setObjectName("MessageFilterBar");
-filter_bar_->setStyleSheet("#MessageFilterBar { background-color: #22262e; }");
+filter_bar_->setStyleSheet("#MessageFilterBar { background-color: #1E1E1E; }");
 // 内部的 QComboBox、QLineEdit、QPushButton 都是系统默认样式！
 
 // ✅ 正确：每个子组件都设置 objectName 和 QSS
 filter_bar_ = new QWidget;
 filter_bar_->setObjectName("MessageFilterBar");
 filter_bar_->setStyleSheet(R"(
-    #MessageFilterBar { background-color: #22262e; }
-    #SourceCombo { background-color: #2d323c; color: #e0e4ec; border: 1px solid #3a3f4b;
+    #MessageFilterBar { background-color: #1E1E1E; }
+    #SourceCombo { background-color: #2C2C2C; color: #FFFFFF; border: 1px solid #333333;
                    border-radius: 4px; padding: 4px 8px; min-width: 80px; }
     #SourceCombo::drop-down { border: none; width: 20px; }
-    #SearchInput { background-color: #2d323c; color: #e0e4ec; border: 1px solid #3a3f4b;
+    #SearchInput { background-color: #2C2C2C; color: #FFFFFF; border: 1px solid #333333;
                    border-radius: 4px; padding: 4px 8px; }
-    #ClearBtn { background-color: transparent; color: #9ca3b0; border: none;
+    #ClearBtn { background-color: transparent; color: #AAAAAA; border: none;
                 padding: 4px 8px; }
-    #ClearBtn:hover { color: #e0e4ec; }
+    #ClearBtn:hover { color: #FFFFFF; }
 )");
 ```
 
@@ -447,11 +461,11 @@ QComboBox 的下拉弹出列表（`QAbstractItemView`）默认使用系统样式
 ```cpp
 // ✅ 正确：下拉列表样式
 #SourceCombo QAbstractItemView {
-    background-color: #2d323c;
-    color: #e0e4ec;
-    border: 1px solid #3a3f4b;
-    selection-background-color: #3b82f6;
-    selection-color: #ffffff;
+    background-color: #2C2C2C;
+    color: #FFFFFF;
+    border: 1px solid #333333;
+    selection-background-color: #6200EE;
+    selection-color: #FFFFFF;
     outline: none;
 }
 ```
@@ -466,10 +480,10 @@ QComboBox 的下拉弹出列表（`QAbstractItemView`）默认使用系统样式
     background-color: transparent; width: 8px; margin: 0;
 }
 #MsgScrollArea QScrollBar::handle:vertical {
-    background-color: #3a3f4b; border-radius: 4px; min-height: 30px;
+    background-color: #333333; border-radius: 4px; min-height: 30px;
 }
-#MsgScrollArea QScrollBar::handle:vertical:hover { background-color: #4a4f5b; }
-#MsgScrollArea QScrollBar::handle:vertical:pressed { background-color: #5a5f6b; }
+#MsgScrollArea QScrollBar::handle:vertical:hover { background-color: #444444; }
+#MsgScrollArea QScrollBar::handle:vertical:pressed { background-color: #666666; }
 #MsgScrollArea QScrollBar::add-line:vertical,
 #MsgScrollArea QScrollBar::sub-line:vertical { height: 0; }
 #MsgScrollArea QScrollBar::add-page:vertical,
@@ -492,7 +506,7 @@ QFrame 容器设置了 `border` 和 `border-radius`，但子控件贴边放置�
 // ✅ 正确：1px 边框 + 1px margins
 auto* layout = new QVBoxLayout(this);
 layout->setContentsMargins(1, 1, 1, 1);  // 为 1px border 留空间
-setStyleSheet("#widget { border: 1px solid #4a4f5b; border-radius: 6px; }");
+setStyleSheet("#widget { border: 1px solid #444444; border-radius: 6px; }");
 
 // ❌ 错误：子控件贴边覆盖边框
 layout->setContentsMargins(0, 0, 0, 0);
@@ -516,11 +530,11 @@ Qt 中不同边框颜色渲染不一致，四边必须使用相同颜色：
 
 ```cpp
 // ✅ 正确
-#widget { border: 1px solid #4a4f5b; border-radius: 6px; }
+#widget { border: 1px solid #444444; border-radius: 6px; }
 
 // ❌ 错误：四边不同色，Qt 渲染不一致
-#widget { border-top: 1px solid #5a5f6b; border-left: 1px solid #4a4f5b;
-          border-right: 1px solid #3a3f4b; border-bottom: 1px solid #2a2e36; }
+#widget { border-top: 1px solid #666666; border-left: 1px solid #444444;
+          border-right: 1px solid #333333; border-bottom: 1px solid #2C2C2C; }
 ```
 
 ---

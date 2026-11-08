@@ -16,18 +16,25 @@
 
 HTML 原型是 QWidget 的视觉预览，不是 Web 页面。必须遵循以下约束确保原型效果可被 Qt 还原：
 
-6. **禁用 CSS 特效**：
-   - 不用 `box-shadow`（Qt 无原生支持，QSS 中无此属性）
-   - 不用 `text-shadow`（QSS 不支持）
-   - 不用 `backdrop-filter`（QSS 不支持）
+6. **禁用 CSS 特效**（与 SKILL.md Step 2 的禁用清单一致）：
+   - 不用 `box-shadow`、`text-shadow`（QSS 无这些属性）
+   - 不用 `backdrop-filter`、`filter`、`opacity`（QSS 不支持；透明度只能靠自定义绘制）
    - 不用 `border-image`（QSS 语法不同，易出错）
-   - 不用多层 `linear-gradient` 叠加（QSS 渐变语法受限）
-   - HTML 原型中可用 `border-bottom` 表达视觉分隔，但转换到 Qt 时必须改为独立的 `QFrame(HLine)`，而非 QSS `border-bottom`
+   - 不用 `linear-gradient` / `radial-gradient` 及其叠加（QSS 渐变语法受限且性能差）
+   - 不用 `transform`、`transition` / `animation`、`clip-path`
+   - 不用 `position: absolute/fixed`、`float`、`z-index`、`::before` / `::after` 伪元素
+   - HTML 原型中可用 `border-bottom` 表达视觉分隔，但转换到 Qt 时必须改为独立的
+     `QFrame(HLine)`，而非 QSS `border-bottom`
 
-7. **禁用 Web 专属交互样式**：
-   - 不用 `:hover` 变色/缩放/阴影（Qt 中 hover 效果需在 QSS 或代码中单独实现）
+7. **交互态与 Web 专属样式**：
+   - **允许**用 `:hover` / `.active` / `[selected]` 表达**静态**交互态预览，便于演示；
+     但每处必须加注释 `<!-- hover-state -->` 或 `<!-- state: selected -->`，
+     且**禁止**搭配 `transition` / 缩放 / 阴影做动画。Qt 侧对应
+     `setAttribute(Qt::WA_Hover)` + QSS 伪状态，或 `Q_PROPERTY` + 属性选择器
+     （见 `html-qt-fidelity.md` 第 2、3 章）。主题 qss 里的 `:hover` 是 Qt 侧实现，与本条不冲突。
    - 不用 `cursor` 样式（Qt 使用 `setCursor()` API）
-   - 不用 `outline`（QSS 不支持）
+   - 不用 CSS `outline` 画焦点框或装饰线——QSS **只支持 `outline: none`** 清除焦点矩形
+     （两份 `themes/*.qss` 正是这么用的），不支持自定义 outline 样式；焦点态用 QSS `:focus` + `border`
    - 不用 `user-select`（Qt 使用 `setTextInteractionFlags()`）
 
 8. **边框规范**：
@@ -52,10 +59,13 @@ HTML 原型是 QWidget 的视觉预览，不是 Web 页面。必须遵循以下�
     - 不用 Web 字体/Google Fonts（Qt 无法加载）
     - 不用 `@font-face`
 
-12. **图标用文字/Unicode**：
-    - 不用 SVG 图标、CSS icon font（Font Awesome 等）
-    - Qt 中用 `QIcon::fromTheme()` 或 Unicode 字符
-    - 示例：`▶` 启动、`■` 停止、`⚙` 设置、`✕` 关闭
+12. **图标用文字/Unicode 占位**：
+    - HTML 原型不用内联 SVG 图标、不用 CSS icon font（Font Awesome 等）
+    - 占位示例：`▶` 启动、`■` 停止、`⚙` 设置、`✕` 关闭
+    - **Qt 侧允许且推荐** `QIcon(QStringLiteral(":/icons/search.svg"))`（QtSvg 标准做法，
+      高 DPI 友好），也可用 `QIcon::fromTheme()`。这与「QSS data URI SVG 仅全局主题
+      checkbox/radio indicator 可用、运行时动态 `setStyleSheet()` 禁用」是**两条独立规则**，
+      不要因为原型用了文字占位就禁止 Qt 使用 SVG 图标资源
 
 13. **间距用像素值**：
     - 只用 `8px/12px/16px` 标准值
@@ -101,35 +111,38 @@ CSS 变量用于定义标准间距和颜色，方便后续映射到 Qt 常量。
 
 ### 2.2 颜色变量（必须来自 ThemeManager）
 
-**生成 HTML 原型前，必须先读取项目的 ThemeManager 色值**，将 ThemeManager 中的颜色映射为 CSS 变量。以下为深色主题示例（实际值以项目 ThemeManager 为准）：
+**生成 HTML 原型前，先按 Step 1.5 / `references/theme-manager.md` 第 1 节确定色板来源**，
+再把每个 `colors_[key]` 映射为同名 CSS 变量。色板的**唯一事实源**是
+`references/theme-manager.md` 第 2 节；下面是它 **Dark 列**的展开（Light 列见该文件）：
 
 ```css
 :root {
     /* 颜色 — 必须与 ThemeManager 完全一致，禁止使用通用色值 */
-    --primary: #3b82f6;           /* ThemeManager colors_["primary"] */
-    --background: #1a1d23;        /* ThemeManager colors_["background"] */
-    --surface: #22262e;           /* ThemeManager colors_["surface"] */
-    --surface_variant: #2d323c;   /* ThemeManager colors_["surface_variant"] */
-    --on_background: #e0e4ec;     /* ThemeManager colors_["on_background"] */
-    --on_surface_secondary: #9ca3b0; /* ThemeManager colors_["on_surface_secondary"] */
-    --on_surface_muted: #6b7280;  /* ThemeManager colors_["on_surface_muted"] */
-    --error: #ef4444;             /* ThemeManager colors_["error"] */
-    --success: #22c55e;           /* ThemeManager colors_["success"] */
-    --warning: #eab308;           /* ThemeManager colors_["warning"] */
-    --border: #3a3f4b;            /* ThemeManager colors_["border"] */
-    --divider: #2d323c;           /* ThemeManager colors_["divider"] */
-    --hover_overlay: #363c48;     /* ThemeManager colors_["hover_overlay"] */
-    --selected_bg: #2a3040;       /* ThemeManager colors_["selected_bg"] */
+    --primary: #6200EE;           /* ThemeManager colors_["primary"] */
+    --background: #121212;        /* ThemeManager colors_["background"] */
+    --surface: #1E1E1E;           /* ThemeManager colors_["surface"] */
+    --surface_variant: #2C2C2C;   /* ThemeManager colors_["surface_variant"] */
+    --on_background: #FFFFFF;     /* ThemeManager colors_["on_background"] */
+    --on_primary: #000000;        /* ThemeManager colors_["on_primary"] */
+    --on_surface_secondary: #AAAAAA; /* ThemeManager colors_["on_surface_secondary"] */
+    --on_surface_muted: #666666;  /* ThemeManager colors_["on_surface_muted"] */
+    --error: #CF6679;             /* ThemeManager colors_["error"] */
+    --success: #66BB6A;           /* ThemeManager colors_["success"] */
+    --warning: #FFA726;           /* ThemeManager colors_["warning"] */
+    --border: #333333;            /* ThemeManager colors_["border"] */
+    --divider: #2C2C2C;           /* ThemeManager colors_["divider"] */
+    --hover_overlay: #2C2C2C;     /* ThemeManager colors_["hover_overlay"] */
+    --selected_bg: #3A2F4A;       /* ThemeManager colors_["selected_bg"] */
 }
 ```
 
 **禁止行为**：
-- ❌ 使用 `#1e1e1e`、`#2d2d2d`、`#ffffff` 等通用色值
-- ❌ 从 Material Design、Tailwind 等设计系统直接取色
-- ❌ 凭感觉猜测颜色
+- ❌ 硬编码与 `ThemeManager::ThemeColor(key)` 不一致的字面量（即便它碰巧是色板里的合法值）
+- ❌ 项目没有色板时，凭感觉从 Material Design / Tailwind 等第三方设计系统抓一组色值
+- ❌ 变量名与 `colors_` 的 key 不一致（如自造 `--bg` / `--card`），导致转换时无法一一对应
 
 **正确做法**：
-- ✅ 读取项目 `ThemeManager::LoadTheme()` 中的 `colors_` 哈希表
+- ✅ 按 Step 1.5 三分支确定色板：读项目 `LoadTheme()` / 先 Bootstrap ThemeManager / 用用户色板覆盖同名 key
 - ✅ 将每个 `colors_[key]` 映射为 `--key` CSS 变量
 - ✅ HTML 中所有颜色引用都使用 CSS 变量，不硬编码
 
@@ -156,21 +169,23 @@ CSS 变量用于定义标准间距和颜色，方便后续映射到 Qt 常量。
             --min-button-width: 80px;
             --border-radius: 4px;
 
-            /* 颜色 — 必须与 ThemeManager 完全一致 */
-            --primary: #3b82f6;
-            --background: #1a1d23;
-            --surface: #22262e;
-            --surface_variant: #2d323c;
-            --on_background: #e0e4ec;
-            --on_surface_secondary: #9ca3b0;
-            --on_surface_muted: #6b7280;
-            --error: #ef4444;
-            --success: #22c55e;
-            --warning: #eab308;
-            --border: #3a3f4b;
-            --divider: #2d323c;
-            --hover_overlay: #363c48;
-            --selected_bg: #2a3040;
+            /* 颜色 — 取自 references/theme-manager.md 第 2 节 Dark 列；
+               实际生成时按 Step 1.5 读到的色板逐 key 覆盖，key 名不可自造 */
+            --primary: #6200EE;
+            --background: #121212;
+            --surface: #1E1E1E;
+            --surface_variant: #2C2C2C;
+            --on_background: #FFFFFF;
+            --on_primary: #000000;
+            --on_surface_secondary: #AAAAAA;
+            --on_surface_muted: #666666;
+            --error: #CF6679;
+            --success: #66BB6A;
+            --warning: #FFA726;
+            --border: #333333;
+            --divider: #2C2C2C;
+            --hover_overlay: #2C2C2C;
+            --selected_bg: #3A2F4A;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -213,7 +228,7 @@ CSS 变量用于定义标准间距和颜色，方便后续映射到 Qt 常量。
 
         button.primary {
             background: var(--primary);
-            color: #ffffff;
+            color: var(--on_primary);
             border-color: var(--primary);
         }
 

@@ -1,6 +1,11 @@
 # QSS (Qt StyleSheet) 完整参考
 
-> 本文档为 QSS 语法参考。实际项目中，为获得最佳性能，请优先使用 `#objectName` 选择器，在根容器集中设置样式表，避免类选择器和后代选择器。
+> 本文档为 QSS 语法参考。
+> - **作用域先分清**：全局主题 qss 用类型选择器（`QPushButton { ... }`）；组件局部 qss
+>   优先 `#objectName` 并在根容器集中设置，避免长后代选择器链。两者规则不同，别一刀切。
+> - **示例色值仅演示语法**：文中的 `#1976D2`、`#E3F2FD` 等是语法演示用色，**不是项目色板**；
+>   落地时统一替换为 `ThemeManager::ThemeColor(key).name()`。色板唯一事实源见
+>   `references/theme-manager.md` 第 2 节。
 
 ## 选择器
 
@@ -10,10 +15,16 @@ QPushButton { /* 所有 QPushButton */ }
 QLineEdit { /* 所有 QLineEdit */ }
 ```
 
-### 类选择器
+### 类选择器（精确类名匹配）
 ```css
-.CustomButton { /* 所有 class 为 CustomButton 的控件 */ }
+.CustomButton { /* 只匹配 C++ 类名为 CustomButton 的控件，不匹配其子类 */ }
 ```
+
+> **QSS 没有 CSS 的 class 属性概念**。点号前缀表示"精确类名"：`.QPushButton` 匹配
+> `QPushButton` 但**不匹配**它的派生类，而 `QPushButton` 会匹配类及其派生类。
+> `::` 在 QSS 中是子控件（如 `QComboBox::drop-down`），不是 C++ 域运算符——
+> 不存在 `QObject::className` 这种选择器。全局主题 qss 通常用类型选择器，
+> 组件局部 qss 优先 `#objectName`。
 
 ### ID 选择器
 ```css

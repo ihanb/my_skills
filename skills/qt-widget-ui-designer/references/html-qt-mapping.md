@@ -170,26 +170,26 @@ HTML 原型中的 CSS 样式需要转换为 QSS，但必须注意两者差异和
 1. **选择器优先级**：
    ```cpp
    // ✅ 高性能：ID 选择器，直接匹配
-   "#myButton { background-color: #3b82f6; }"
+   "#myButton { background-color: #6200EE; }"
 
    // ❌ 低性能：类选择器，遍历所有控件
-   "QPushButton { background-color: #3b82f6; }"
+   "QPushButton { background-color: #6200EE; }"
 
    // ❌ 最低性能：后代选择器，级联遍历
-   "QWidget QPushButton { background-color: #3b82f6; }"
+   "QWidget QPushButton { background-color: #6200EE; }"
    ```
 
 2. **样式表设置位置**：
    ```cpp
    // ✅ 高性能：在根容器设置，利用 CSS 继承
    this->setStyleSheet(
-       "#cardLabel { color: #9ca3b0; font-size: 12px; }"
-       "#cardValue { color: #ffffff; font-size: 20px; font-weight: bold; }"
+       "#cardLabel { color: #AAAAAA; font-size: 12px; }"
+       "#cardValue { color: #FFFFFF; font-size: 20px; font-weight: bold; }"
    );
 
    // ❌ 低性能：每个子控件单独设置
-   label1->setStyleSheet("color: #9ca3b0; font-size: 12px;");
-   label2->setStyleSheet("color: #ffffff; font-size: 20px; font-weight: bold;");
+   label1->setStyleSheet("color: #AAAAAA; font-size: 12px;");
+   label2->setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: bold;");
    ```
 
 3. **避免频繁 setStyleSheet**：
@@ -202,7 +202,7 @@ HTML 原型中的 CSS 样式需要转换为 QSS，但必须注意两者差异和
    // ❌ 错误：在运行时频繁调用
    void UpdateStatus(bool running) {
        label->setStyleSheet(running ?
-           "color: #22c55e;" : "color: #ef4444;");  // 每次调用触发样式重算
+           "color: #66BB6A;" : "color: #CF6679;");  // 每次调用触发样式重算
    }
 
    // ✅ 正确：用 QSS 类选择器切换
@@ -354,14 +354,14 @@ HTML 原型中的复合 UI 模式（如筛选栏、消息气泡、卡片列表�
 
 ```cpp
 // 完整的 QComboBox 样式映射
-"#SourceCombo { background-color: #2d323c; color: #e0e4ec; border: 1px solid #3a3f4b;"
+"#SourceCombo { background-color: #2C2C2C; color: #FFFFFF; border: 1px solid #333333;"
 "              border-radius: 4px; padding: 4px 28px 4px 8px; min-width: 80px; }"
 "#SourceCombo::drop-down { subcontrol-origin: padding; subcontrol-position: center right;"
-"                          width: 20px; border-left: 1px solid #3a3f4b; border: none; }"
+"                          width: 20px; border-left: 1px solid #333333; border: none; }"
 "#SourceCombo::down-arrow { width: 8px; height: 8px; }"
-"#SourceCombo QAbstractItemView { background-color: #2d323c; color: #e0e4ec;"
-"                                 border: 1px solid #3a3f4b; selection-background-color: #3b82f6;"
-"                                 selection-color: #ffffff; outline: none; }"
+"#SourceCombo QAbstractItemView { background-color: #2C2C2C; color: #FFFFFF;"
+"                                 border: 1px solid #333333; selection-background-color: #6200EE;"
+"                                 selection-color: #FFFFFF; outline: none; }"
 ```
 
 ### 10.2 QScrollBar 子组件
@@ -379,10 +379,10 @@ HTML 原型中的复合 UI 模式（如筛选栏、消息气泡、卡片列表�
 ```cpp
 // 完整的 QScrollBar 样式映射
 "#ScrollArea QScrollBar:vertical { background-color: transparent; width: 8px; margin: 0; }"
-"#ScrollArea QScrollBar::handle:vertical { background-color: #3a3f4b; border-radius: 4px;"
+"#ScrollArea QScrollBar::handle:vertical { background-color: #333333; border-radius: 4px;"
 "                                          min-height: 30px; }"
-"#ScrollArea QScrollBar::handle:vertical:hover { background-color: #4a4f5b; }"
-"#ScrollArea QScrollBar::handle:vertical:pressed { background-color: #5a5f6b; }"
+"#ScrollArea QScrollBar::handle:vertical:hover { background-color: #444444; }"
+"#ScrollArea QScrollBar::handle:vertical:pressed { background-color: #666666; }"
 "#ScrollArea QScrollBar::add-line:vertical, #ScrollArea QScrollBar::sub-line:vertical { height: 0; }"
 "#ScrollArea QScrollBar::add-page:vertical, #ScrollArea QScrollBar::sub-page:vertical { background: none; }"
 ```
@@ -437,91 +437,26 @@ HTML 原型中的复合 UI 模式（如筛选栏、消息气泡、卡片列表�
 
 ---
 
-## 11. QSS 陷阱与保真度规则
+## 11. QSS 陷阱与保真度规则（索引）
 
-HTML → Qt 转换中最容易导致视觉差异的系统性陷阱。完整规则详见 `references/html-qt-fidelity.md`。
+**保真度规则的唯一事实源是 `references/html-qt-fidelity.md`（12 条）。**
+历史上本章曾复制其中 7 条，导致两处规则漂移；现在只保留索引。转换时按表跳转，
+修改规则时**只改 fidelity 正文**，并同步 `quality-checklist.md` 第 9 节的勾选项。
 
-### 11.1 QSS padding 与 layout margins 冲突
+| 转换时容易踩的坑 | 规则正文 | 勾选项 |
+|------------------|---------|--------|
+| QSS `padding` 与 `setContentsMargins()` 双重叠加 | `html-qt-fidelity.md` 第 1 章 | checklist 9 第 1 项 |
+| QSS `:hover` 不生效（缺 `WA_Hover`） | 第 2 章 | checklist 9 第 2 项 |
+| `[prop=value]` 属性选择器不生效（缺 `Q_PROPERTY`） | 第 3 章 | checklist 9 第 3 项 |
+| `QLabel` + `border-radius` 背景不裁剪（缺 `setFixedSize`） | 第 4 章 | checklist 9 第 4 项 |
+| 子控件单独 `setStyleSheet()` 丢失继承属性 | 第 5 章 | checklist 9 第 10 项 |
+| `setFixedHeight` vs `setMinimumHeight` 选错 | 第 6 章 | checklist 9 第 8 项 |
+| 分隔线用 QSS `border-bottom` 不可靠（应用独立 `QFrame(HLine)`） | 第 7 章 | checklist 9 第 5 项 |
+| 颜色值与 ThemeManager 不一致 | 第 8 章 | checklist 9 第 7 项 |
+| 子 QWidget 透明、未显式设背景色 | 第 9 章 | checklist 9 第 6 项 |
+| 字号 ≤11px 偏小 / 字体渲染差异 | 第 10 章 | checklist 9 第 9 项 |
+| 复合控件子组件（QComboBox / QScrollBar / QTabWidget）漏样式 | 第 11 章 | 本文第 10 章 |
+| QFrame 容器边框与子控件配合、圆角容器被直角子控件覆盖 | 第 12 章 | 本文第 10 章 |
 
-**最常见问题**：有布局的 QWidget 同时设置 QSS `padding` 和 `setContentsMargins()`，两者叠加导致内边距翻倍。
-
-```cpp
-// ❌ 错误：双重叠加，实际内边距 = 24px
-auto* layout = new QVBoxLayout(this);
-layout->setContentsMargins(12, 10, 12, 10);
-setStyleSheet("#card { padding: 10px 12px; }");
-
-// ✅ 正确：只用 layout margins
-auto* layout = new QVBoxLayout(this);
-layout->setContentsMargins(12, 10, 12, 10);
-// QSS 中不写 padding
-```
-
-**例外**：没有布局的 QLabel（如状态徽章），QSS `padding` 安全可用。
-
-### 11.2 QSS `:hover` 需要 WA_Hover
-
-自定义 QWidget/QFrame 子类使用 QSS `:hover`，必须设置 `setAttribute(Qt::WA_Hover)`：
-
-```cpp
-// ❌ 错误：:hover 不生效
-setStyleSheet("#card:hover { border-color: #3b82f6; }");
-
-// ✅ 正确
-setAttribute(Qt::WA_Hover);
-setStyleSheet("#card:hover { border-color: #3b82f6; }");
-```
-
-### 11.3 QSS 属性选择器需要 Q_PROPERTY
-
-QSS `[selected=true]` 等属性选择器，必须在类中声明 `Q_PROPERTY`：
-
-```cpp
-// ✅ 正确
-class SimDeviceCard : public QFrame {
-    Q_OBJECT
-    Q_PROPERTY(bool selected READ isSelected WRITE setSelected)
-    // ...
-};
-```
-
-### 11.4 QLabel 小元素需要 setFixedSize
-
-状态点、徽章等小尺寸 QLabel，必须用 `setFixedSize()` 确保尺寸精确，否则布局可能拉伸导致背景不裁剪：
-
-```cpp
-// ✅ 正确
-status_dot_->setFixedSize(6, 6);
-status_dot_->setStyleSheet("background-color: #ef4444; border-radius: 3px;");
-```
-
-### 11.5 分隔线用 QFrame 不用 QSS border-bottom
-
-```cpp
-// ❌ 错误：QSS border-bottom 在 QWidget 上不可靠
-header->setStyleSheet("#header { border-bottom: 1px solid #3a3f4b; }");
-
-// ✅ 正确：独立 QFrame
-auto* separator = new QFrame;
-separator->setFrameShape(QFrame::HLine);
-separator->setFixedHeight(1);
-separator->setStyleSheet("background-color: #3a3f4b; border: none;");
-```
-
-### 11.6 每个 QWidget 显式设置背景色
-
-Qt 中 QWidget 默认不绘制背景（透明），只设父控件背景色不够：
-
-```cpp
-// ❌ 错误：子控件可能显示系统默认色
-main_widget->setStyleSheet("background-color: #22262e;");
-auto* scroll_content = new QWidget;  // 透明！
-
-// ✅ 正确：每个容器都设置
-main_widget->setStyleSheet("background-color: #22262e;");
-scroll_content->setStyleSheet("background-color: #22262e;");
-```
-
-### 11.7 颜色值必须与 ThemeManager 一致
-
-HTML 原型和 Qt 代码必须使用 ThemeManager 的同一套色值，不能各自用不同的颜色。
+> 本文件第 10 章「复合控件子组件映射」是**具体控件清单**，与 fidelity 第 11/12 章的
+> **保真度规则**互补，两者不重复。
