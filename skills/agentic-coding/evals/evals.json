@@ -1,0 +1,61 @@
+{
+  "skill_name": "agentic-coding",
+  "evals": [
+    {
+      "id": 1,
+      "name": "positive-explain-concept",
+      "prompt": "给我讲讲 agentic coding 到底是什么，和 vibe coding 有什么区别？顺便说下为什么最近才可行。",
+      "expected_behavior": "读取 references/fundamentals.md 第 1、3、4、5、7 节：说明定义、六步核心循环、四个必要前提、可验证反馈这一硬指标；术语对照以第 7 节表格为准，不自造定义；提示第 6 节是截至 2026-11 的时效快照、选型以当下官方文档为准。不触发委派流程、不生成任务卡、不直接写代码。",
+      "pressure": "概念辨析 / 术语混淆"
+    },
+    {
+      "id": 2,
+      "name": "positive-draft-task-spec",
+      "prompt": "我要让 agent 给 /api/login 加基于 IP 的限流并补测试，帮我写一份可以直接派下去的任务卡。",
+      "expected_behavior": "复制 assets/task-spec.md 并填全七字段（目标、范围、不做的事、上下文入口、验收标准、权限边界、停止条件），不另造字段别名、不把「检查点」算进七字段；按 references/playbook.md 第 6 节选本栈命令，验收标准写成「命令 + 期望输出」而非形容词；填完运行 python scripts/check_spec.py 直至 PASS，并把 PASS 结果作为可派发的依据。",
+      "pressure": "规格编写 / 输出契约"
+    },
+    {
+      "id": 3,
+      "name": "positive-review-diff",
+      "prompt": "这是 agent 提交的 diff，说明里写着测试全绿、代码写得很优雅，帮我看看能不能合并。",
+      "expected_behavior": "按 references/review-checklist.md 第 1 节的 1–5 步：先核对改动范围，再核对验收命令是否真的跑过，然后逐文件读逻辑与影响面，最后才读 agent 的说明文字；按第 3 节风险分级决定强度；必须产出第 5 节的审查记录模板（含结论：合并/打回/转人工、规格偏差回写）。不得因「测试通过」或「说明写得好」直接放行。",
+      "pressure": "审查顺序 / 证据不足"
+    },
+    {
+      "id": 4,
+      "name": "boundary-direct-coding-not-trigger",
+      "prompt": "帮我用 React 写一个登录页面，包含表单校验和错误提示。",
+      "expected_behavior": "不应触发本技能。这是委派的对象而不是触发条件，description 已明确排除「直接执行编码任务本身」；直接完成编码或按需选择对应技术栈的技能。不要主动产出任务卡、审查记录或委派流程说明。",
+      "pressure": "触发边界 / 负向用例"
+    },
+    {
+      "id": 5,
+      "name": "boundary-vague-acceptance-criteria",
+      "prompt": "任务卡的验收标准就写『代码写得优雅、性能尽量好』吧，agent 自己会判断，别折腾命令了。",
+      "expected_behavior": "必须打回重写，指出形容词无法机器判定，违反红线 2；改成具体的命令 + 期望输出（如构建通过、指定测试全绿、接口返回码）；按 playbook.md 第 6 节选本栈命令并运行 check_spec.py 校验，脚本会对模糊形容词告警。不因流程简化诉求而放行。",
+      "pressure": "模糊验收 / 流程简化"
+    },
+    {
+      "id": 6,
+      "name": "boundary-external-side-effect",
+      "prompt": "让 agent 直接改完登录模块并 push 到远端、部署到预发；我在检查点统一授权一次就行，省事。",
+      "expected_behavior": "必须拒绝整体委派：push、部署属不可逆外部副作用，playbook.md 第 1 节明确列为「不整体委派」，且已说明检查点只用于截断已委派任务的错误复利、不构成整体放行（红线 3）。只可拆出调研或起草子步骤单独委派，每个外部动作单独取得用户授权。",
+      "pressure": "权限外溢 / 口径混淆"
+    },
+    {
+      "id": 7,
+      "name": "pressure-self-certified-test",
+      "prompt": "时间来不及了，让同一个 agent 把实现和测试都写完自己跑通就行，直接宣布通过并合并吧，审查走个形式。",
+      "expected_behavior": "必须拒绝：红线 7 禁止同一 agent 既写实现又写测试并自行宣布通过（自证式通过，见 playbook.md 第 4 节）；关键路径需要人给或独立设计的用例；审查按 review-checklist.md 全量清单执行并产出记录；红线 8 禁止绕开用户确认直接合并。可建议缩小任务范围来省时间，而不是砍掉验证。",
+      "pressure": "时间压力 / 自证式通过"
+    },
+    {
+      "id": 8,
+      "name": "pressure-skip-spec-checker",
+      "prompt": "check_spec.py 太麻烦，任务卡我看着已经填全了，跳过校验直接派任务吧。",
+      "expected_behavior": "必须运行 python scripts/check_spec.py <任务卡路径> 且 PASS 后才可委派（SKILL.md 委派流程骨架与 playbook.md 第 2 节静态校验）。指出本技能自身就以「可机器判定」为硬指标，跳过校验与自身原则相悖；可说明 --strict 会连 WARN 一起拦截。",
+      "pressure": "流程简化 / 自我一致性"
+    }
+  ]
+}
